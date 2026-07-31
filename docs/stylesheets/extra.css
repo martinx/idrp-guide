@@ -1,0 +1,125 @@
+/*
+ * 品牌色取自 AAS 系列演示应用/控制台的统一视觉规范：
+ * 主色 #D42820（红），辅助浅红 #E8574C，头部渐变 135deg #E8402F → #B8241D。
+ * 圆角、阴影、字体栈同样对齐这套规范，让教程站点和产品演示画面观感一致。
+ */
+
+/* ---------- 品牌色：浅色模式 ---------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #d42820;
+  --md-primary-fg-color--light: #e8574c;
+  --md-primary-fg-color--dark: #b8241d;
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: #ffffff;
+
+  --md-accent-fg-color: #d42820;
+  --md-accent-fg-color--transparent: #d4282026;
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: #ffffff;
+
+  --md-typeset-a-color: #d42820;
+
+  --md-default-bg-color: #f5f6f8;
+  --md-code-bg-color: #f7f8fa;
+  --md-code-fg-color: #1a1d29;
+}
+
+/* ---------- 品牌色：深色模式 ---------- */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #e8574c;
+  --md-primary-fg-color--light: #ff7a68;
+  --md-primary-fg-color--dark: #b8241d;
+
+  --md-accent-fg-color: #ff7a68;
+  --md-accent-fg-color--transparent: #ff7a6826;
+
+  --md-typeset-a-color: #ff7a68;
+
+  --md-code-bg-color: #1c1f27;
+  --md-code-fg-color: #e6e8ec;
+}
+
+/* 顶部导航条用品牌渐变，呼应控制台头部样式 */
+.md-header {
+  background: linear-gradient(135deg, #e8402f, #b8241d);
+}
+
+/* ---------- 中文字体优化 ----------
+ * 关闭了 Material 默认的 Google Fonts（国内访问不稳定，且拉丁字重和中文字重不搭）。
+ * 这里显式声明系统自带的高素质中文字体优先级，Mac 上是 PingFang SC，
+ * Windows 上落到 Microsoft YaHei，Linux 落到 Noto Sans CJK，观感统一优雅。
+ */
+:root {
+  --md-text-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
+    "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  --md-code-font: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+.md-typeset {
+  font-family: var(--md-text-font);
+  line-height: 1.75;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+/* ---------- 代码块美化 ----------
+ * 圆角卡片 + 细边框 + 轻阴影，呼应控制台卡片式设计（--radius: 12px 的风格）。
+ */
+.md-typeset .highlight {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  box-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.04),
+    0 2px 8px rgba(16, 24, 40, 0.06);
+}
+
+.md-typeset .highlight > pre {
+  margin: 0;
+}
+
+.md-typeset pre > code {
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+.md-typeset code {
+  border-radius: 4px;
+  padding: 0.1em 0.4em;
+}
+
+.md-clipboard {
+  border-radius: 6px;
+}
+
+.md-clipboard:hover {
+  color: var(--md-accent-fg-color);
+}
+
+/* 行内代码与代码块背景略微区分正文背景，层次更清楚 */
+[data-md-color-scheme="default"] .md-typeset :not(pre) > code {
+  background-color: #eef0f3;
+}
+[data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
+  background-color: #262a34;
+}
+
+/* 提示框/详情框也用一致的圆角语言 */
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* 表格圆角与细边框，和控制台的卡片表格视觉呼应 */
+.md-typeset table:not([class]) {
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--md-default-fg-color--lightest);
+}

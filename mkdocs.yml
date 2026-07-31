@@ -9,34 +9,39 @@ copyright: Copyright &copy; 2026
 theme:
   name: material
   language: zh
+  font: false
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: indigo
-      accent: indigo
+      primary: red
+      accent: red
       toggle:
         icon: material/weather-night
         name: 切换到深色模式
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: red
+      accent: red
       toggle:
         icon: material/weather-sunny
         name: 切换到浅色模式
   features:
     - navigation.instant
     - navigation.tracking
-    - navigation.tabs
     - navigation.top
     - navigation.footer
+    - navigation.expand
     - navigation.indexes
+    - toc.follow
     - search.suggest
     - search.highlight
     - content.code.copy
     - content.action.edit
   icon:
     repo: fontawesome/brands/github
+
+extra_css:
+  - stylesheets/extra.css
 
 markdown_extensions:
   - toc:
