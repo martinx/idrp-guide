@@ -1,0 +1,80 @@
+site_name: 意图驱动录制：从零打造自动化功能演示视频流水线
+site_description: 从一台干净的机器开始，搭建一套"描述意图 + 少量 codegen"即可自动生成功能演示视频的完整流水线
+site_url: https://idrp.bitey.ai/
+repo_url: https://github.com/martinx/idrp-guide
+repo_name: martinx/idrp-guide
+edit_uri: edit/main/docs/
+copyright: Copyright &copy; 2026
+
+theme:
+  name: material
+  language: zh
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+  - def_list
+
+plugins:
+  - search
+
+nav:
+  - 首页: index.md
+  - "00 前言与总体架构": 00-overview.md
+  - "01 环境准备": 01-environment-setup.md
+  - "02 项目脚手架与目录规范": 02-project-scaffold.md
+  - "03 意图驱动的 Feature Spec 设计": 03-feature-spec.md
+  - "04 浏览器自动化与 Codegen": 04-codegen.md
+  - "05 屏幕与浏览器录制": 05-recording.md
+  - "06 自动配音 Dub 流程": 06-dubbing.md
+  - "07 封面与素材生成": 07-cover-assets.md
+  - "08 音视频合成 Cover-Mix": 08-mixing.md
+  - "09 全流程编排器实现": 09-orchestrator.md
+  - "10 质量检查与防泄露清单": 10-quality-checklist.md
+  - "11 故障排查、性能优化与扩展": 11-troubleshooting.md
+  - "12 端到端实战演练": 12-walkthrough.md
+  - "13 常见问题 FAQ": 13-faq.md
+  - "14 自动化边界与 ROI 考量": 14-roi.md
+  - "15 术语表与延伸阅读": 15-glossary.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/martinx/idrp-guide
