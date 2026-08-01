@@ -3,6 +3,29 @@
  * 开本 6in x 9in，是主流技术书（Manning/O'Reilly 等）常见的开本尺寸
  * ============================================================ */
 
+/* ---------------- 字号集中配置 ----------------
+ * 常规技术书（6x9开本）排版惯例：正文 9.5~10pt、行距约为字号的1.3~1.4倍，
+ * 章节标题 18~20pt，二级标题 12~13pt，三级标题 10.5~11pt。
+ * 想调字号大小，只改这里，不用去下面找每一处具体规则。 */
+:root {
+  --fs-body: 9.5pt;
+  --lh-body: 1.4;
+
+  --fs-h1: 19pt;       /* 章节标题（正文页顶部大标题） */
+  --fs-h2: 12.5pt;      /* 正文里的二级标题 */
+  --fs-h3: 10.5pt;      /* 正文里的三级标题 */
+
+  --fs-code-block: 8pt;
+  --lh-code-block: 1.45;
+  --fs-table: 8.3pt;
+
+  --fs-toc-entry: 9.5pt;
+  --fs-cover-title: 29pt;
+  --fs-cover-subtitle: 12pt;
+  --fs-title-page: 23pt;
+  --fs-part-title: 23pt;
+}
+
 @page {
   size: 6in 9in;
   margin: 0.85in 0.7in 0.85in 0.7in;
@@ -61,8 +84,8 @@ html, body {
 
 body {
   font-family: "Songti SC", "STSong", serif;
-  font-size: 10.3pt;
-  line-height: 1.65;
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
   color: #1a1a1a;
   orphans: 3;
   widows: 3;
@@ -128,15 +151,15 @@ a { color: #b8241d; text-decoration: none; }
   z-index: 1;
 }
 .cover .cover-title {
-  font-size: 34pt;
+  font-size: var(--fs-cover-title);
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.25;
   margin-top: 0.4in;
   z-index: 1;
   letter-spacing: -0.01em;
 }
 .cover .cover-subtitle {
-  font-size: 13pt;
+  font-size: var(--fs-cover-subtitle);
   color: #c8c5bd;
   margin-top: 0.22in;
   line-height: 1.5;
@@ -167,13 +190,13 @@ a { color: #b8241d; text-decoration: none; }
 }
 .title-page { text-align: left; }
 .title-page .tp-title {
-  font-size: 27pt;
+  font-size: var(--fs-title-page);
   font-weight: 800;
   line-height: 1.3;
   margin-bottom: 0.15in;
 }
 .title-page .tp-subtitle {
-  font-size: 13pt;
+  font-size: 12pt;
   color: #555;
   font-weight: 400;
   margin-bottom: 0.55in;
@@ -228,7 +251,7 @@ a { color: #b8241d; text-decoration: none; }
 a.toc-entry {
   display: flex;
   align-items: baseline;
-  font-size: 10pt;
+  font-size: var(--fs-toc-entry);
   color: #222;
   padding: 0.05in 0;
   text-decoration: none;
@@ -270,7 +293,7 @@ a.toc-entry::after {
   text-transform: uppercase;
 }
 .part-divider .part-title {
-  font-size: 26pt;
+  font-size: var(--fs-part-title);
   font-weight: 800;
   margin-top: 0.15in;
   color: #111;
@@ -297,7 +320,7 @@ a.toc-entry::after {
 }
 .chapter .chapter-title {
   font-family: "PingFang SC", sans-serif;
-  font-size: 21pt;
+  font-size: var(--fs-h1);
   font-weight: 800;
   margin: 0.06in 0 0.4in;
   padding-bottom: 0.18in;
@@ -305,12 +328,12 @@ a.toc-entry::after {
   line-height: 1.3;
 }
 .chapter h2 {
-  font-size: 13.5pt;
+  font-size: var(--fs-h2);
   margin: 1.3em 0 0.55em;
   color: #b8241d;
 }
 .chapter h3 {
-  font-size: 11.5pt;
+  font-size: var(--fs-h3);
   margin: 1.1em 0 0.4em;
 }
 
@@ -321,8 +344,8 @@ pre {
   border-left: 2.5pt solid #b8241d;
   border-radius: 3pt;
   padding: 0.14in 0.16in;
-  font-size: 8.3pt;
-  line-height: 1.55;
+  font-size: var(--fs-code-block);
+  line-height: var(--lh-code-block);
   margin: 0 0 0.9em;
   overflow-wrap: break-word;
   white-space: pre-wrap;
@@ -349,7 +372,7 @@ table {
   border-collapse: collapse;
   width: 100%;
   margin: 0 0 1em;
-  font-size: 8.7pt;
+  font-size: var(--fs-table);
   break-inside: avoid;
 }
 th, td {
