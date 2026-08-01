@@ -1,171 +1,69 @@
 # 02 项目脚手架与目录规范
 
-本章把 01 章装好的工具组织进一个规范的仓库结构，后续所有代码示例都放在这个结构里，路径引用才能对得上。
+本章把 01 章装好的工具组织进一个规范的目录结构。这里要分清楚两类完全不同的目录：**工具本体**（你写一次、之后不常改的 CLI 脚本）和**功能点数据**（每次录制新功能点都会新增一个的目录）。混淆这两者是新手最常踩的坑——把某个功能点的临时调试文件提交进了工具仓库，或者反过来把工具的公共脚本误放进了某个功能点目录里，导致改一处忘了改另一处。
 
-## 2.1 顶层目录设计
+## 2.1 工具本体的目录结构
 
 ```
-idrp/                              # Intent-Driven Recording Pipeline 项目根目录
-├── package.json
-├── tsconfig.json
-├── playwright.config.ts
-├── .env.local                     # 密钥类环境变量，加入 .gitignore，绝不提交
-├── .gitignore
-├── config/
-│   ├── rule.yaml                  # 全局录制规范：分辨率、码率、字体、品牌色、语速等
-│   └── voices.yaml                # TTS 发音人配置（不同语言/角色）
-├── specs/                         # 每个功能点一个 Feature Spec
-│   ├── feature-01-login.yaml
-│   └── feature-02-dashboard-card.yaml
-├── src/
-│   ├── spec/                      # 03 章：Feature Spec 的类型定义与解析
-│   │   ├── schema.ts
-│   │   └── loader.ts
-│   ├── codegen/                   # 04 章：codegen 辅助与脚本清洗
-│   │   ├── record-session.ts
-│   │   └── sanitize-script.ts
-│   ├── recorder/                  # 05 章：录制层（浏览器 + 屏幕级）
-│   │   ├── browser-recorder.ts
-│   │   └── screen-recorder.ts
-│   ├── dub/                       # 06 章：配音层
-│   │   ├── tts-provider.ts
-│   │   ├── tts-azure.ts
-│   │   ├── tts-edge.ts
-│   │   └── audio-duration.ts
-│   ├── cover/                     # 07 章：封面生成
-│   │   ├── template.html
-│   │   └── (封面用 ImageMagick 直接生成，见07章，这里不需要额外的渲染脚本)
-│   ├── mix/                       # 08 章：ffmpeg 合成
-│   │   ├── concat.ts
-│   │   ├── subtitle.ts
-│   │   └── export.ts
-│   ├── orchestrator/              # 09 章：总编排器
-│   │   └── run-feature.ts
-│   └── util/
-│       ├── logger.ts
-│       └── paths.ts
-├── assets/
-│   ├── fonts/                     # 从系统路径复制/软链过来的字体，保证跨机器一致
-│   ├── bg/                        # 封面背景图
-│   └── music/                     # 背景音乐（若使用）
-├── work/                          # 运行期产物（临时文件），加入 .gitignore
-│   └── <feature-id>/
-│       ├── raw/                   # 分段原始录像
-│       ├── audio/                 # 分段配音
-│       ├── srt/                   # 字幕文件
-│       └── cover.png
-└── output/                        # 最终成片输出目录
-    └── <feature-id>.mp4
+video-toolkit/                      # 工具仓库：写一次、长期维护，各功能点共用同一份
+├── video-toolkit.sh                 # 主入口，vt 这个命令背后就是这个脚本（09章讲全部命令）
+├── lib/
+│   ├── meta.sh                      # meta.json 三级配置引擎（09章9.4节）
+│   └── compose.sh                   # 封面/封底/BGM 通用合成器（07/08章）
+├── rebranded-chromium/               # 换皮后的 Chromium（05章7.8节的浏览器换皮技巧）
+│                                     # 机器本地产物，不提交进仓库
+├── RULE.md                          # 项目级规则文件：功能点制作/录制/色调规范
+│                                     # 一次写好，后面每个功能点只需要一句话描述，
+│                                     # AI 自动遵守这里的规范（17章1.1节详细展开）
+└── docs/                             # 工具自身的文档
 ```
 
-## 2.2 为什么这样分层
+## 2.2 每个功能点的数据目录
 
-- `specs/` 与 `src/` 分离：Feature Spec 是"数据"，随时间不断新增；`src/` 是"代码"，相对稳定。这样产品/运营也能直接编辑 `specs/*.yaml` 而不用碰代码。
-- 项目级 `meta.json`（09 章 9.4 节的三级合并）承担"全局规范"的角色：分辨率、字体、发音人、品牌色等，一处修改，全部功能点视频统一生效，避免不同人录制风格不一致。
-- `work/` 与 `output/` 分离：`work/` 是可随时清空重跑的中间产物，`output/` 才是交付物，防止误删成片。
-- 每个能力模块（codegen/recorder/dub/cover/mix）单独成目录，彼此只通过明确的输入输出文件/接口交互，方便单独测试、替换实现（比如把 TTS 从 edge-tts 换成 Azure，只改 `dub/` 目录内部）。
+工具本体之外，每次录制一个新功能点，在你自己的项目里新建一个目录，跟工具仓库完全分开：
 
-## 2.3 初始化命令
+```
+feature-07-export-report/
+├── nav-draft.spec.js       ← codegen 草稿（可选，04章）
+├── record.spec.js           ← 操作代码，含内嵌解说文案（03/04章）
+├── timeline.json             ← 录制时自动生成，不需要手写（03章3.3节）
+├── recording.mov             ← 原始录像（05章）
+├── subtitles.srt              ← 字幕（06章）
+├── ai_dub.wav                ← AI 配音（06章）
+├── meta.json                  ← 这个功能点的展示配置（09章9.4节）
+└── feature-07-export-report.mp4   ← 最终成片
+```
+
+这个目录里的每一份文件，本书前面章节都已经讲过它的来源和用途；本章要讲的是**这些目录本身怎么组织、放在哪**。
+
+## 2.3 为什么这样分层
+
+- **工具和数据分仓库/分目录**：`video-toolkit/` 变化频率低（加新命令、修 bug），功能点目录变化频率高（几乎每天都有新的）。分开之后，升级工具不会影响任何一个功能点的产物，回滚某个功能点的改动也不会影响工具本身。
+- **`RULE.md` 承担"团队规范"的角色**：字体、色调、语气基调、防泄露要求这些"所有功能点都要遵守"的规则，写在这一份文件里，AI 处理任何一个功能点时都会自动带上这份上下文，不需要每次都重新强调一遍（17 章 17.1 节会展开）。
+- **`meta.json` 只管单个功能点的个性化配置**：标题、副标题这类每个功能点必然不同的字段，和 `RULE.md` 的"全局规则"是两个层次，不要混在一起。
+
+## 2.4 全局 CLI 配置
+
+工具本身还有一层比 `RULE.md` 更底层的配置——运行 `vt` 命令时的默认参数（用哪个发音人、用哪个语音识别引擎），存放在用户主目录下，跟具体项目无关：
 
 ```bash
-mkdir -p idrp/{config,specs,src/{spec,codegen,recorder,dub,cover,mix,orchestrator,util},assets/{fonts,bg,music},work,output}
-cd idrp
-npm init -y
-npm install -D typescript ts-node @types/node
-npm install -D playwright @playwright/test
-npm install js-yaml
-npm install -D @types/js-yaml
-npx tsc --init
-npx playwright install --with-deps chromium
+# ~/.config/video-toolkit/config
+VIDEO_VOICE=zh-CN-XiaoxiaoNeural
+VIDEO_VOICE_EN=en-US-AvaNeural
+VIDEO_ASR=faster-whisper
+ADMIN_PW=你的演示账号密码（本机专用，不提交进任何仓库）
 ```
 
-`tsconfig.json` 建议关键配置：
+这份文件不纳入任何版本控制——它是"这台机器上运行 `vt` 命令的默认习惯"，换一台机器可以有不同的默认值，跟项目内容无关。命令行也可以用环境变量临时覆盖（比如 `VT_RECORD_SCREEN` 临时指定录制屏幕序号，05 章 5.7 节提到过这个手工兜底），优先级比配置文件更高。
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "outDir": "dist",
-    "resolveJsonModule": true
-  },
-  "include": ["src/**/*.ts"]
-}
-```
+## 2.5 命名规范
 
-`.gitignore` 关键条目：
+- 功能点目录名：`feature-<序号>-<英文短横线slug>`，例如 `feature-07-export-report`，跟 09 章命令行操作时的参数保持一致（`vt record feature-07-export-report`）。
+- 产物文件名固定用本章 2.2 节列出的这几个约定名字（`record.spec.js`/`timeline.json`/`subtitles.srt`/`ai_dub.wav`/`meta.json`），不要自己发明别的命名——09 章的编排器（以及 `vt status`）靠这几个固定文件名判断流程进度，改了名字这套"文件即状态"的机制就失效了。
+- 最终成片文件名固定是目录名本身（`<功能点目录名>.mp4`），方便批量归档时一眼看出对应哪个功能点。
 
-```
-node_modules/
-work/
-output/
-.env.local
-dist/
-*.aiff
-*.wav
-```
+## 2.6 团队协作下的目录约定补充
 
-## 2.4 package.json 脚本约定
+功能点数量上来之后（几十上百个），建议在功能点数据的存放位置上再加一层业务模块分类，比如 `reports/feature-07-export-report/`、`settings/feature-12-notification-rule/`，而不是所有功能点平铺在同一层——这条约定在项目早期（功能点个位数）看起来是多余的，但规模上升后能显著降低维护成本，建议从第一天就这样组织。
 
-```json
-{
-  "scripts": {
-    "codegen": "ts-node src/codegen/record-session.ts",
-    "run:feature": "ts-node src/orchestrator/run-feature.ts",
-    "clean:work": "rm -rf work/*"
-  }
-}
-```
-
-后续每一章新增的能力，都通过扩展 `src/` 下对应目录 + 在 `run-feature.ts` 里接线的方式集成，不引入额外的构建系统，保持"能看懂、能改"的朴素工程风格——这套流水线本身不需要发布成 npm 包或对外提供 API，过度工程化没有必要。
-
-## 2.5 命名与编号规范
-
-- Feature Spec 文件名：`feature-<序号>-<英文短横线slug>.yaml`，例如 `feature-07-export-report.yaml`。
-- 产物目录/文件统一用 Feature Spec 里的 `id` 字段命名（03 章会定义），不要用中文或空格，避免 ffmpeg/shell 处理路径时转义出问题。
-- 版本化：`specs/` 目录建议纳入 git 管理，`work/`、`output/` 不纳入（成片如需归档，走独立的制品存储，而不是塞进代码仓库）。
-
-## 2.6 多环境隔离：本地开发 / 演示环境 / 生产云端
-
-一个容易被低估的工程问题是：这套流水线本身会在至少三种不同的"环境"下运行，如果不提前把环境差异显式建模，代码里就会出现大量临时性的 if-else 判断，越写越乱。三种环境分别是：
-
-**本地开发环境**：工程师在自己的笔记本上调试某一个 Feature Spec 或某一段 codegen 脚本，追求的是"跑得快、能反复试错、不产生额外费用"。这个环境下 TTS 应该默认走离线方案（`TTS_PROVIDER=edge` 或 `mac-say`），浏览器录制默认开 `headless: false` 方便肉眼观察，日志级别调到 `debug`。
-
-**演示/预发环境**：录制的目标页面是 staging 环境而不是生产环境，使用的账号是专门的演示账号（10 章会细讲），这个环境下追求的是"画面和数据干净、可反复重录"，通常也是正式产出交付视频的环境。
-
-**生产云端环境（CI）**：无人值守批量运行，追求的是"稳定、可重复、失败要能被自动感知"，TTS 必须走云端方案（离线方案的音质不适合正式对外交付），浏览器录制必须 `headless: true` 配合 Xvfb（11 章会讲），日志要结构化输出方便 CI 平台采集。
-
-具体做法是用 `.env` 文件分层 + `dotenv` 库按环境加载，而不是把环境判断逻辑写进业务代码：
-
-```
-.env.local          # 本地开发，加入 .gitignore，人手一份，各自配置自己的密钥
-.env.staging         # 演示环境公共配置（不含密钥，密钥仍走各自的 secret 管理）
-.env.ci               # CI/生产云端配置
-```
-
-```typescript
-// src/util/env.ts
-import dotenv from "dotenv";
-import path from "path";
-
-const envName = process.env.IDRP_ENV ?? "local";
-dotenv.config({ path: path.resolve(process.cwd(), `.env.${envName}`) });
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: false });
-```
-
-业务代码里永远只读 `process.env.TTS_PROVIDER` 这类逻辑变量，不直接判断"现在是不是本地"，这样切换环境只需要改一个 `IDRP_ENV` 值，不需要改任何一行 `src/` 下的模块代码，这也是 06 章 TTS 适配层能够"一次实现、三处复用"的前提。
-
-## 2.7 团队协作下的目录约定补充
-
-如果这套流水线会被多名工程师/产品经理共同使用，还建议补充两条约定：
-
-1. **`specs/` 目录按业务模块二级分类**，避免几十个 Feature Spec 平铺在一层目录里难以检索，例如 `specs/reports/feature-07-export-report.yaml`、`specs/settings/feature-12-notification-rule.yaml`。
-2. **功能点目录按业务模块分类存放**，比如 `feature-reports-export/`、`feature-settings-notification/`，而不是所有功能点平铺在同一层，长期积累后才不会难以检索。
-
-这两条约定在项目早期（Feature Spec 数量个位数）看起来是多余的，但一旦规模上升到几十上百个功能点，会显著降低维护成本，建议从项目第一天就按这个结构组织，而不是等到目录混乱后再重构。
-
-下一章正式定义 Feature Spec 的结构——这是整个系统里唯一需要人工输入"意图"的地方。
+下一章正式讲清楚一个功能点由哪几份文件描述——也就是 2.2 节列出的这几个文件各自的职责边界。

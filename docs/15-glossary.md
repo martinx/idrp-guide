@@ -5,7 +5,7 @@
 | 术语 | 说明 | 对应章节 |
 |---|---|---|
 | IDRP（Intent-Driven Recording Pipeline） | 本教程自定义的名称，指代全书构建的"意图驱动录制流水线"系统 | 00 章 |
-| Feature Spec | 描述一个功能点录制"意图"的结构化 YAML 文件，全系统唯一的人工输入产物 | 03 章 |
+| Feature Spec（本书的统称，非某个具体文件名） | 描述一个功能点"意图"的三份文件的合称：`record.spec.js`（操作代码+解说文案）、`timeline.json`（录制自动生成的时间戳）、`meta.json`（展示配置） | 03 章 |
 | Codegen | Playwright 提供的"操作即代码"录制工具，把人工操作转成可重放脚本 | 04 章 |
 | 选择器（Locator/Selector） | 自动化脚本定位页面元素的方式，稳定性直接决定脚本的可维护性 | 04 章 |
 | recordVideo | Playwright BrowserContext 内置的浏览器视口录制能力 | 05 章 |
@@ -18,35 +18,31 @@
 | SRT | 一种常见的字幕文件格式，包含序号、起止时间戳、文本三部分 | 08 章 |
 | 硬字幕/软字幕（burned_in / soft） | 硬字幕是把字幕像素直接烧录进画面（兼容性最好但不可关闭），软字幕是作为独立字幕轨封装进容器（可开关/切换语言但依赖播放器支持） | 08 章 |
 | Preflight | 正式录制前，用 headless 浏览器提前跑一遍所有操作脚本以确认可执行性的检查步骤 | 04 章、09 章 |
-| 编排器（Orchestrator） | 把 Feature Spec 解析、配音生成、操作录制、音视频合成等各模块按顺序调用起来的总控程序 | 09 章 |
-| 幂等性（Idempotency） | 指多次执行同一个 Feature Spec 的录制流程，只要输入不变，会得到内容一致的输出 | 09 章 |
+| 编排器（Orchestrator） | 把配音生成、操作录制、音视频合成等各模块按顺序调用起来的总控命令，本书里就是 `video-toolkit.sh` 这个入口脚本（`vt` 命令背后的实现） | 09 章 |
+| 幂等性（Idempotency） | 指多次对同一个功能点执行相同命令，只要输入文件不变，会得到内容一致的输出 | 09 章 |
+| RULE.md | 项目级规则文件：解说文案的语气基调、字数区间、防泄露约束等所有功能点都要遵守的规范，一次写好，AI 处理每个新功能点时自动遵守 | 02 章、17 章 |
+| `vt` | 不是需要单独安装的软件，就是本书搭出来的入口脚本（`video-toolkit.sh`）的一个命令行短别名——你自己实现时可以叫任何名字，书里统一用它只是为了命令示例整齐 | 09 章 |
 | loudnorm / drawtext / subtitles | ffmpeg 中分别用于响度归一化、绘制文字（封面）、渲染字幕的滤镜 | 01 章、07 章、08 章 |
 | ROI（投资回报率） | 本教程 14 章用来衡量"这套自动化系统是否值得为某个场景投入建设"的核心判断标准 | 14 章 |
 
-## 15.2 全书代码模块速查
+## 15.2 全书能力速查
 
-如果需要快速定位某个能力对应的代码文件，可以参考下表（路径基于 02 章约定的项目结构）：
+如果需要快速定位某个能力对应本书哪一段实现，可以参考下表（对应 02 章约定的工具目录结构：主入口 `video-toolkit.sh` + `lib/` 下的辅助脚本）：
 
-| 能力 | 文件路径 |
+| 能力 | 实现位置 |
 |---|---|
-| Feature Spec 类型定义 | `src/spec/schema.ts` |
-| Feature Spec 加载与校验 | `src/spec/loader.ts` |
-| codegen 清洗后的操作片段 | `src/codegen/steps/*.ts` |
-| 浏览器录制 | `src/recorder/browser-recorder.ts` |
-| 系统级录屏 | `src/recorder/screen-recorder.ts` |
-| TTS 供应商适配层 | `src/dub/tts-provider.ts`、`tts-azure.ts`、`tts-edge.ts`、`tts-say.ts` |
-| 音频时长测量与节奏计算 | `src/dub/audio-duration.ts`、`pacing.ts` |
-| 响度归一化 | `src/dub/normalize.ts` |
-| 封面生成 | `gen_title_card_png`/`gen_title_card`（ImageMagick 画图 + ffmpeg 转视频，见07章） |
-| 封面转视频片段 | `src/cover/cover-to-clip.ts` |
-| 分段规范化 | `src/mix/normalize-segment.ts` |
-| 视频音频贴合 | `src/mix/attach-audio.ts` |
-| 拼接 | `src/mix/concat.ts` |
-| 字幕生成与烧录 | `src/mix/subtitle.ts`、`burn-subtitle.ts` |
-| 背景音乐混音 | `src/mix/background-music.ts` |
-| 最终导出 | `src/mix/export.ts` |
-| 总编排入口 | `src/orchestrator/run-feature.ts` |
-| Preflight 检查 | `src/orchestrator/preflight.ts` |
+| 操作代码 + 内嵌解说文案 | 每个功能点目录下的 `record.spec.js`（03/04章） |
+| codegen 草稿 | `nav-draft.spec.js`，`vt codegen` 命令产出（04章） |
+| 录制自动生成时间戳 | `timeline.json`，`record.spec.js` 里的 `step()` 调用副产品（03章3.3节） |
+| 系统级录屏 + 无人值守细节 | `video-toolkit.sh` 的 `cmd_record`/`detect_recording_screen`（05章） |
+| 字幕来源判定（时间点文本/ASR兜底） | `extract_srt`（06章6.1节） |
+| 按字幕自然语速配音 | `srt_to_dub_core`（06章6.2节，多音字修复表也在这里） |
+| 多语言字幕翻译 | `translate_srt`（06章6.3节，调用 DeepSeek API） |
+| 封面生成 | `gen_title_card_png`/`gen_title_card`（`lib/compose.sh`，ImageMagick画图+ffmpeg转视频，见07章） |
+| 合成主流程（裁剪/混流/偏移/拼接/BGM） | `compose`/`compose_final`（`lib/compose.sh`，08章） |
+| 字幕烧录 | `cmd_burn`（08章8.6节） |
+| meta.json 三级配置合并 | `load_meta`/`meta_get`/`resolve_asset`（`lib/meta.sh`，09章9.4节） |
+| 命令分发入口 | `video-toolkit.sh` 的 `main`/命令行 case 分支（09章9.3节） |
 
 ## 15.3 延伸阅读方向
 

@@ -222,10 +222,10 @@ export function generateQaReport(opts: {
 
 ## 19.7 接入编排器
 
-在 09 章 `run-feature.ts` 的 `finalExport` 之后追加这个质检环节，作为交付前的最后一步自动化：
+在 09 章命令行编排的最后一步（`vt mix` 或者 `vt all` 跑完）之后追加这个质检环节，作为交付前的最后一步自动化：
 
 ```typescript
-// 追加在 09 章 main() 的 finalExport 之后
+// 追加在最终成片生成之后（可以包装成一个新的 vt 命令，比如 vt qa）
 const frameDir = path.join(workDir, "qa-frames");
 fs.mkdirSync(frameDir, { recursive: true });
 const frames = await extractFrames({ videoPath: finalPath, outputDir: frameDir });
