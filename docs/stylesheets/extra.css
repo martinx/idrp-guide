@@ -208,3 +208,40 @@
 .md-search__input:focus {
   box-shadow: 0 0 0 1.5px var(--md-accent-fg-color);
 }
+
+/* ==========================================================
+ * 导航改为「搜索优先 + 抽屉式目录」：
+ * 章节多、目录长，不再常驻左侧栏占用正文宽度；
+ * 复用 Material 自带的 __drawer 复选框开关机制，强制它在所有宽度下
+ * 都表现为"点按钮才滑出"的抽屉，而不是仅在手机宽度下才如此。
+ * 右侧"本页目录"不受影响，仍然常驻显示。
+ * ========================================================== */
+.md-sidebar--primary {
+  position: fixed !important;
+  top: 0;
+  height: 100vh;
+  transform: translateX(-100%) !important;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 10;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+[data-md-toggle="drawer"]:checked ~ .md-container .md-sidebar--primary {
+  transform: translateX(0) !important;
+  box-shadow: var(--shadow-md);
+}
+
+/* 顶部「目录」按钮：任何宽度下都显示，不再只在手机宽度出现 */
+.md-header__button[for="__drawer"] {
+  display: inline-flex !important;
+}
+
+/* 搜索框：加宽 + 常驻展开，作为主要的导航入口 */
+.md-header__inner .md-search {
+  flex-grow: 1;
+  max-width: 32rem;
+  margin-left: 1rem;
+}
+.md-search__form {
+  border-radius: 8px;
+}
