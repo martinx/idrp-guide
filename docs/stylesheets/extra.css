@@ -76,24 +76,36 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* ---------- 字体：干净耐读，不用 Google Fonts ---------- */
+/* ---------- 字体：和 PDF 版保持一致的字体搭配（正文宋体/标题黑体），不用 Google Fonts ---------- */
 :root {
-  --md-text-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
+  --md-text-font: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", serif;
+  --md-heading-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
     "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   --md-code-font: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 }
 .md-typeset {
   font-family: var(--md-text-font);
-  line-height: 1.75;
-  font-size: 0.8rem;
+  line-height: 1.6;
+  font-size: 0.78rem;
 }
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3 {
+  font-family: var(--md-heading-font);
   font-weight: 700;
   letter-spacing: -0.005em;
   color: var(--md-default-fg-color);
+}
+/* 顶部导航条/侧边栏/搜索这些界面元素维持无衬线，只有正文用宋体，
+   避免菜单/按钮这类UI文字用衬线显得不协调 */
+.md-header,
+.md-nav,
+.md-tabs,
+.md-search,
+.home-card-eyebrow,
+.home-card-desc {
+  font-family: var(--md-heading-font);
 }
 .md-typeset h1 {
   font-size: 1.9rem;
