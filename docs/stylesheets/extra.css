@@ -1,72 +1,83 @@
 /*
- * 科技感主题：深色为默认基调，靛蓝 → 青色的渐变品牌色，
- * 终端风代码块（发光边框 + 深空背景），网格纹理点缀头部。
+ * "Claude 风格"：暖白纸张背景 + 克制的赤陶橙点缀，干净排版，
+ * 无渐变/无发光特效，卡片用细边框+浅阴影，安静、耐读、不抢内容风头。
  */
 
-/* ---------- 品牌色：暗色（默认） ---------- */
-[data-md-color-scheme="slate"] {
-  --md-default-bg-color: #0b0f19;
-  --md-default-fg-color: #e2e8f0;
-  --md-default-fg-color--light: #cbd5e1;
-  --md-default-fg-color--lighter: #94a3b8;
-  --md-default-fg-color--lightest: #1e2536;
-
-  --md-primary-fg-color: #0b0f19;
-  --md-primary-bg-color: #e2e8f0;
-
-  --md-accent-fg-color: #22d3ee;
-  --md-accent-fg-color--transparent: #22d3ee26;
-
-  --md-typeset-a-color: #7dd3fc;
-
-  --md-code-bg-color: #10141f;
-  --md-code-fg-color: #d7e2f4;
-
-  --brand-gradient: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
-  --brand-glow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 0 24px rgba(34, 211, 238, 0.12);
-}
-
-/* ---------- 品牌色：亮色 ---------- */
+/* ---------- 亮色（默认） ---------- */
 [data-md-color-scheme="default"] {
-  --md-primary-fg-color: #ffffff;
-  --md-primary-bg-color: #0b0f19;
+  --md-default-bg-color: #faf9f5;
+  --md-default-fg-color: #3d3929;
+  --md-default-fg-color--light: #6b6656;
+  --md-default-fg-color--lighter: #8a8572;
+  --md-default-fg-color--lightest: #e8e6dc;
 
-  --md-accent-fg-color: #4f46e5;
-  --md-accent-fg-color--transparent: #4f46e526;
+  --md-primary-fg-color: #faf9f5;
+  --md-primary-bg-color: #3d3929;
 
-  --md-typeset-a-color: #4f46e5;
+  --md-accent-fg-color: #c96442;
+  --md-accent-fg-color--transparent: #c9644226;
 
-  --md-code-bg-color: #0b0f19;
-  --md-code-fg-color: #d7e2f4;
+  --md-typeset-a-color: #c96442;
 
-  --brand-gradient: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
-  --brand-glow: 0 0 0 1px rgba(79, 70, 229, 0.18), 0 0 20px rgba(6, 182, 212, 0.10);
+  --md-code-bg-color: #f0eee6;
+  --md-code-fg-color: #3d3929;
+
+  --brand-accent: #c96442;
+  --card-border: rgba(61, 57, 41, 0.12);
+  --card-shadow: 0 1px 2px rgba(61, 57, 41, 0.04), 0 2px 8px rgba(61, 57, 41, 0.05);
 }
 
-/* 顶部导航条：渐变 + 细网格纹理，营造"电路板"科技感 */
+/* ---------- 暗色 ---------- */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #1f1e1c;
+  --md-default-fg-color: #e8e6dc;
+  --md-default-fg-color--light: #c2beac;
+  --md-default-fg-color--lighter: #948f7c;
+  --md-default-fg-color--lightest: #35332d;
+
+  --md-primary-fg-color: #1f1e1c;
+  --md-primary-bg-color: #e8e6dc;
+
+  --md-accent-fg-color: #e08a67;
+  --md-accent-fg-color--transparent: #e08a6726;
+
+  --md-typeset-a-color: #e08a67;
+
+  --md-code-bg-color: #2a2824;
+  --md-code-fg-color: #e8e6dc;
+
+  --brand-accent: #e08a67;
+  --card-border: rgba(232, 230, 220, 0.12);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+/* 顶部导航条：和正文同色系，纯色不做渐变，安静低调 */
 .md-header {
-  background: var(--brand-gradient);
-  background-image:
-    radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
-    var(--brand-gradient);
-  background-size: 18px 18px, 100% 100%;
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 20px rgba(0, 0, 0, 0.25);
+  background-color: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  box-shadow: 0 1px 0 var(--card-border);
 }
 
 .md-header__title,
-.md-header__button {
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+.md-header__button,
+.md-header__topic {
+  color: var(--md-default-fg-color) !important;
 }
 
-/* 左侧栏当前项：发光左边条 */
+.md-tabs {
+  background-color: var(--md-default-bg-color);
+}
+
+/* 左侧栏当前项：细的赤陶色左边条，不做发光效果 */
 .md-nav__link--active,
 .md-nav__link:focus,
 .md-nav__link:hover {
-  color: var(--md-accent-fg-color);
+  color: var(--brand-accent);
 }
 
 .md-nav__item .md-nav__link--active {
   position: relative;
+  font-weight: 600;
 }
 
 .md-nav__item .md-nav__link--active::before {
@@ -76,12 +87,11 @@
   top: 2px;
   bottom: 2px;
   width: 2px;
-  background: var(--brand-gradient);
+  background: var(--brand-accent);
   border-radius: 2px;
-  box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
 }
 
-/* ---------- 中文字体 ---------- */
+/* ---------- 中文字体：干净耐读，不用 Google Fonts ---------- */
 :root {
   --md-text-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
     "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
@@ -92,38 +102,33 @@
 .md-typeset {
   font-family: var(--md-text-font);
   line-height: 1.75;
+  font-size: 0.72rem;
 }
 
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3 {
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  font-weight: 650;
+  letter-spacing: 0.005em;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset h1 {
+  border-bottom: 1px solid var(--card-border);
+  padding-bottom: 0.4em;
 }
 
 .md-typeset h2 {
-  position: relative;
-  padding-left: 14px;
+  margin-top: 2em;
 }
 
-.md-typeset h2::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.15em;
-  bottom: 0.15em;
-  width: 4px;
-  border-radius: 2px;
-  background: var(--brand-gradient);
-}
-
-/* ---------- 代码块：终端风，发光边框 + 深空背景 ---------- */
+/* ---------- 代码块：纸感卡片，细边框浅阴影，不做发光/渐变 ---------- */
 .md-typeset .highlight {
   border-radius: 10px;
   overflow: hidden;
   background: var(--md-code-bg-color);
-  box-shadow: var(--brand-glow);
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 
 .md-typeset .highlight > pre {
@@ -136,67 +141,66 @@
   color: var(--md-code-fg-color);
 }
 
-/* 代码块顶部仿终端窗口的三色圆点装饰条 */
-.md-typeset .highlight::before {
-  content: "";
-  display: block;
-  height: 28px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-  background-image:
-    radial-gradient(circle 5px at 16px 14px, #ff5f56 100%, transparent 101%),
-    radial-gradient(circle 5px at 34px 14px, #ffbd2e 100%, transparent 101%),
-    radial-gradient(circle 5px at 52px 14px, #27c93f 100%, transparent 101%);
-}
-
 .md-typeset code {
   border-radius: 4px;
   padding: 0.1em 0.4em;
 }
 
 .md-clipboard {
-  color: var(--md-accent-fg-color);
+  color: var(--md-default-fg-color--lighter);
 }
 
 .md-clipboard:hover {
-  color: var(--md-accent-fg-color);
-  filter: brightness(1.3);
+  color: var(--brand-accent);
 }
 
-[data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
-  background-color: #161b29;
-  color: #7dd3fc;
-}
 [data-md-color-scheme="default"] .md-typeset :not(pre) > code {
-  background-color: #eef1ff;
-  color: #4338ca;
+  background-color: #f0eee6;
+  color: #b35538;
+}
+[data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
+  background-color: #2a2824;
+  color: #e08a67;
 }
 
-/* 提示框/详情框：发光描边，呼应整体科技感 */
+/* 提示框/详情框：细边框卡片，左侧一条赤陶色强调线 */
 .md-typeset .admonition,
 .md-typeset details {
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  border-left: 3px solid var(--md-accent-fg-color);
+  border: 1px solid var(--card-border);
+  border-left: 3px solid var(--brand-accent);
+  box-shadow: var(--card-shadow);
 }
 
-/* 表格：细边框 + 圆角卡片 */
+/* 表格：细边框卡片 */
 .md-typeset table:not([class]) {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.18);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
 }
 
 .md-typeset table:not([class]) th {
-  background: rgba(99, 102, 241, 0.12);
+  background: var(--md-code-bg-color);
+  font-weight: 600;
 }
 
-/* 首页/章节内的按钮、链接 hover 发光反馈 */
+/* 链接：不做文字发光，只变色 + 细下划线 */
+.md-typeset a {
+  text-decoration-color: var(--md-accent-fg-color--transparent);
+}
+
 .md-typeset a:hover {
-  text-shadow: 0 0 12px var(--md-accent-fg-color);
+  color: var(--brand-accent);
 }
 
-/* 搜索框：发光聚焦态 */
+/* 搜索框：聚焦态用赤陶色细描边，不做发光 */
 .md-search__input:focus {
-  box-shadow: 0 0 0 2px var(--md-accent-fg-color);
+  box-shadow: 0 0 0 1.5px var(--brand-accent);
+}
+
+/* 首页大标题：适度加大，视觉上像一本书的封面 */
+.md-typeset h1:first-child {
+  font-size: 1.9rem;
 }

@@ -11,18 +11,18 @@ theme:
   language: zh
   font: false
   palette:
-    - scheme: slate
-      primary: black
-      accent: indigo
-      toggle:
-        icon: material/weather-sunny
-        name: 切换到浅色模式
     - scheme: default
       primary: white
-      accent: indigo
+      accent: deep orange
       toggle:
         icon: material/weather-night
         name: 切换到深色模式
+    - scheme: slate
+      primary: black
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: 切换到浅色模式
   features:
     - navigation.instant
     - navigation.tracking
@@ -76,6 +76,11 @@ nav:
   - "13 常见问题 FAQ": 13-faq.md
   - "14 自动化边界与 ROI 考量": 14-roi.md
   - "15 术语表与延伸阅读": 15-glossary.md
+  - "16 AI 是真正的操作者": 16-ai-overview.md
+  - "17 用 AI 设计与调试 Spec/Codegen": 17-ai-spec-and-codegen.md
+  - "18 用 AI 生成解说文案与字幕": 18-ai-narration.md
+  - "19 用 AI 做自动化质检与防泄露检测": 19-ai-qa-leak-detection.md
+  - "20 实战案例重做：AI 主导工作流": 20-ai-walkthrough.md
 
 extra:
   social:
