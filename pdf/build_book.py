@@ -94,35 +94,72 @@ MD_EXT_CONFIG = {
 }
 
 
-# ---- 封面用的抽象矢量图：AI 节点图 + 录制/播放按钮 + 音频波形 + 代码符号 ----
+# ---- 封面用的抽象矢量图：AI 神经网络球 + 录制/播放按钮 + 音频波形 + 代码符号 ----
+# 亮色渐变背景上用白色/青色的发光节点网络代表 AI，配合项目本身的三个核心
+# 交付物图标（录制、配音波形、自动化代码），拼成"AI + 自动化 + 录制"的视觉主题。
 COVER_SVG = """
-<svg width="300" height="170" viewBox="0 0 300 170" xmlns="http://www.w3.org/2000/svg">
-  <g stroke="#6b6f7a" stroke-width="1.1" opacity="0.85">
-    <line x1="34" y1="34" x2="96" y2="18"/>
-    <line x1="34" y1="34" x2="76" y2="66"/>
-    <line x1="96" y1="18" x2="76" y2="66"/>
-    <line x1="76" y1="66" x2="130" y2="44"/>
-    <line x1="96" y1="18" x2="130" y2="44"/>
+<svg width="340" height="250" viewBox="0 0 340 250" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="nodeGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#a7f3d0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- AI 神经网络球：一组发光节点+连线，代表 AI 编排 -->
+  <g stroke="#e0f2fe" stroke-width="1" opacity="0.65">
+    <line x1="170" y1="22" x2="122" y2="48"/>
+    <line x1="170" y1="22" x2="222" y2="48"/>
+    <line x1="122" y1="48" x2="152" y2="72"/>
+    <line x1="222" y1="48" x2="192" y2="72"/>
+    <line x1="152" y1="72" x2="192" y2="72"/>
+    <line x1="152" y1="72" x2="92" y2="78"/>
+    <line x1="192" y1="72" x2="252" y2="78"/>
+    <line x1="152" y1="72" x2="132" y2="108"/>
+    <line x1="192" y1="72" x2="212" y2="108"/>
+    <line x1="132" y1="108" x2="212" y2="108"/>
+    <line x1="132" y1="108" x2="170" y2="132"/>
+    <line x1="212" y1="108" x2="170" y2="132"/>
+    <line x1="92" y1="78" x2="132" y2="108"/>
+    <line x1="252" y1="78" x2="212" y2="108"/>
   </g>
-  <g fill="#ff7a68">
-    <circle cx="34" cy="34" r="4.5"/>
-    <circle cx="96" cy="18" r="3.4"/>
-    <circle cx="76" cy="66" r="5.4"/>
-    <circle cx="130" cy="44" r="3.4"/>
+  <g fill="url(#nodeGlow)">
+    <circle cx="170" cy="22" r="14"/>
+    <circle cx="152" cy="72" r="18"/>
+    <circle cx="192" cy="72" r="18"/>
+    <circle cx="170" cy="132" r="16"/>
   </g>
-  <circle cx="220" cy="52" r="38" fill="none" stroke="#d42820" stroke-width="2"/>
-  <circle cx="220" cy="52" r="30" fill="#d42820" opacity="0.16"/>
-  <polygon points="208,35 208,69 238,52" fill="#ff9a86"/>
-  <g stroke="#c8c5bd" stroke-width="2.6" stroke-linecap="round" opacity="0.9">
-    <line x1="14" y1="128" x2="14" y2="144"/>
-    <line x1="27" y1="116" x2="27" y2="156"/>
-    <line x1="40" y1="104" x2="40" y2="168"/>
-    <line x1="53" y1="122" x2="53" y2="150"/>
-    <line x1="66" y1="98"  x2="66" y2="174"/>
-    <line x1="79" y1="116" x2="79" y2="156"/>
-    <line x1="92" y1="128" x2="92" y2="144"/>
+  <g fill="#ffffff">
+    <circle cx="170" cy="22" r="4.5"/>
+    <circle cx="122" cy="48" r="3.2"/>
+    <circle cx="222" cy="48" r="3.2"/>
+    <circle cx="92"  cy="78" r="3"/>
+    <circle cx="252" cy="78" r="3"/>
+    <circle cx="132" cy="108" r="3.6"/>
+    <circle cx="212" cy="108" r="3.6"/>
   </g>
-  <text x="140" y="150" font-family="Menlo, monospace" font-size="24" fill="#9a9eaa">&lt;/&gt;</text>
+  <g fill="#a7f3d0">
+    <circle cx="152" cy="72" r="5.5"/>
+    <circle cx="192" cy="72" r="5.5"/>
+    <circle cx="170" cy="132" r="5"/>
+  </g>
+
+  <!-- 项目三要素：录制/播放、配音波形、自动化代码 -->
+  <g transform="translate(30,180)">
+    <circle cx="30" cy="28" r="27" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.85"/>
+    <circle cx="30" cy="28" r="20" fill="#fbbf24" opacity="0.22"/>
+    <polygon points="22,15 22,41 44,28" fill="#fbbf24"/>
+  </g>
+
+  <g transform="translate(140,182)" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.92">
+    <line x1="0"  y1="18" x2="0"  y2="34"/>
+    <line x1="12" y1="8"  x2="12" y2="44"/>
+    <line x1="24" y1="0"  x2="24" y2="52"/>
+    <line x1="36" y1="12" x2="36" y2="40"/>
+    <line x1="48" y1="20" x2="48" y2="32"/>
+  </g>
+
+  <text x="245" y="222" font-family="Menlo, monospace" font-size="30" font-weight="700" fill="#ffffff">&lt;/&gt;</text>
 </svg>
 """.strip()
 

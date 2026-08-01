@@ -117,14 +117,16 @@ li { margin-bottom: 0.35em; }
 strong { font-weight: 700; }
 a { color: #b8241d; text-decoration: none; }
 
-/* ---------------- 封面 ---------------- */
+/* ---------------- 封面 ----------------
+ * 亮色、有饱和度的靛蓝-紫罗兰-青色渐变，比之前的深黑色调亮很多，
+ * 同时保留足够的科技感（渐变+发光节点图案），不会显得平淡。 */
 .cover {
   page: cover;
   page-break-after: always;
   width: 6in;
   height: 9in;
-  background: linear-gradient(155deg, #1a1d23 0%, #14161b 60%, #0e0f12 100%);
-  color: #f2f0ea;
+  background: linear-gradient(150deg, #4338ca 0%, #7c3aed 46%, #0891b2 100%);
+  color: #ffffff;
   position: relative;
   overflow: hidden;
   display: flex;
@@ -136,29 +138,28 @@ a { color: #b8241d; text-decoration: none; }
 .cover::before {
   content: "";
   position: absolute;
-  top: -1.4in;
-  right: -1.4in;
-  width: 3.2in;
-  height: 3.2in;
+  top: -1.6in;
+  right: -1.2in;
+  width: 3.6in;
+  height: 3.6in;
   border-radius: 50%;
-  background: radial-gradient(circle, #d42820 0%, transparent 72%);
-  opacity: 0.55;
+  background: radial-gradient(circle, rgba(34,211,238,0.55) 0%, transparent 70%);
 }
 .cover::after {
   content: "";
   position: absolute;
-  left: -0.4in;
-  bottom: -0.4in;
-  width: 2in;
-  height: 2in;
-  border: 1.5pt solid rgba(255,255,255,0.15);
+  left: -0.6in;
+  bottom: -0.8in;
+  width: 2.6in;
+  height: 2.6in;
   border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.14) 0%, transparent 72%);
 }
 .cover .cover-kicker {
   font-size: 10pt;
-  letter-spacing: 0.22em;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: #ff7a68;
+  color: #a7f3d0;
   font-weight: 700;
   z-index: 1;
 }
@@ -166,14 +167,14 @@ a { color: #b8241d; text-decoration: none; }
   font-size: var(--fs-cover-title);
   font-weight: 800;
   line-height: 1.25;
-  margin-top: 0.4in;
+  margin-top: 0.35in;
   z-index: 1;
   letter-spacing: -0.01em;
 }
 .cover .cover-subtitle {
   font-size: var(--fs-cover-subtitle);
-  color: #c8c5bd;
-  margin-top: 0.22in;
+  color: #ece9ff;
+  margin-top: 0.2in;
   line-height: 1.5;
   max-width: 4.3in;
   z-index: 1;
@@ -181,13 +182,13 @@ a { color: #b8241d; text-decoration: none; }
 }
 .cover .cover-footer {
   z-index: 1;
-  border-top: 0.75pt solid rgba(255,255,255,0.25);
+  border-top: 0.75pt solid rgba(255,255,255,0.35);
   padding-top: 0.22in;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   font-size: 10pt;
-  color: #d8d5cc;
+  color: #ece9ff;
 }
 .cover .cover-footer .author { font-weight: 700; font-size: 12pt; color: #fff; }
 
@@ -428,8 +429,8 @@ blockquote {
   page: cover;
   width: 6in;
   height: 9in;
-  background: linear-gradient(155deg, #1a1d23 0%, #14161b 60%, #0e0f12 100%);
-  color: #e8e6dc;
+  background: linear-gradient(150deg, #4338ca 0%, #7c3aed 46%, #0891b2 100%);
+  color: #ece9ff;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -444,15 +445,15 @@ blockquote {
 .back-cover p {
   font-size: 10pt;
   line-height: 1.75;
-  color: #c8c5bd;
+  color: #ece9ff;
   text-align: left;
 }
 .back-cover .bc-list {
   margin-top: 0.25in;
   font-size: 9.5pt;
-  color: #d8d5cc;
+  color: #ffffff;
 }
 .back-cover .bc-list div {
   padding: 0.06in 0;
-  border-top: 0.5pt solid rgba(255,255,255,0.15);
+  border-top: 0.5pt solid rgba(255,255,255,0.3);
 }
