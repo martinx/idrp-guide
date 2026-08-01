@@ -1,6 +1,6 @@
 # 04 浏览器自动化与 Codegen
 
-本章解决整个系统里"人工介入最少但不可省略"的一环：把人手动操作浏览器一遍的过程，转成可以被程序反复、稳定重放的自动化脚本，并且让脚本片段能对应到 03 章 Feature Spec 里的 `codegen_ref`。
+本章解决整个系统里"人工介入最少但不可省略"的一环：把人手动操作浏览器一遍的过程，转成 03 章讲的 `record.spec.js`——一段可以被程序反复、稳定重放的自动化脚本。
 
 ## 4.1 Playwright Codegen 的工作原理
 
@@ -16,27 +16,27 @@
 ## 4.2 录制会话的标准操作流程
 
 ```bash
-# 启动 codegen，指定输出文件、初始视口、设备场景
+# 启动 codegen，指定输出文件、初始视口，直接对着目标系统录
 npx playwright codegen \
   --target javascript \
   --viewport-size=1440,900 \
-  --output=src/codegen/raw/open-report-page.raw.ts \
+  --output=feature-07-export-report/nav-draft.spec.js \
   https://staging.example.com/login
 ```
 
-操作建议（对照 03 章 Spec 里的 `steps`，一个 `codegen_ref` 对应一次独立的 codegen 会话，不要把整个功能点从头到尾录成一条脚本）：
+操作建议（这次会话产出的是**整个功能点从头到尾的一份完整草稿**，不是切成一小段一小段分别录）：
 
-1. **登录单独录一次**，产出 `login.raw.ts`，因为几乎每个功能点视频都要先登录，这段可以被多个 Feature 复用（见 4.5 节的"可复用片段库"）。
-2. **每个 Spec 里的 `action` 步骤单独录一次会话**，只做该步骤范围内的操作，操作完成后就关闭 codegen 窗口。例如 `codegen_ref: open-report-page` 对应的会话，只做"打开报表页 → 选时间范围 → 选维度"这几个动作，不要连着把导出也一起录了。
+1. **一次会话走完整个功能点的操作路径**：登录 → 打开报表页 → 选时间范围/维度 → 点导出 → 选 Excel → 确认。中间不要关闭 codegen 窗口再重开，保持一条连续的操作序列，因为最终 `record.spec.js` 也是一份连续脚本，不是拼接起来的分段文件。
+2. 如果登录这类前置操作在多个功能点之间完全一致，可以把这部分单独抽成一个共享函数（见 4.5 节），但仍然是在**同一次 codegen 会话里**先走一遍，产出草稿之后再手动把登录部分替换成对共享函数的调用，而不是提前单独录一份登录专用脚本。
 3. 录制过程中动作要"干净"：不要有多余的误点、悬停、来回切换标签页，这些都会被原样录进脚本，之后要手动清理（4.3 节）。
 
-这样录出来一堆 `*.raw.ts` 片段，文件名直接对应 Spec 里的 `codegen_ref` 值，是编排器自动关联脚本片段与 Spec 步骤的依据。
+这次会话产出的 `nav-draft.spec.js` 只是一份**选择器草稿**，下一步是把里面的选择器整理进正式的 `record.spec.js`——这一步通常交给 AI 完成（17 章会给出具体方法），人工负责最后审阅操作顺序是否符合真实业务语义。
 
 ## 4.3 清洗生成的脚本
 
 Codegen 生成的原始代码是"能跑但不干净"的，直接拿去录制正式视频通常有三类问题需要处理：
 
-**问题一：多余的等待/断言**。Codegen 有时会插入一些调试用的 `expect()` 断言或不必要的 `waitForTimeout`，这些要么删掉，要么替换成 03 章 Spec 里显式声明的 `pace.wait_for`。
+**问题一：多余的等待/断言**。Codegen 有时会插入一些调试用的 `expect()` 断言或不必要的 `waitForTimeout`，这些要么直接删掉，要么替换成基于真实页面状态的显式等待（比如等某个文案出现），写法见下面的清洗示例。
 
 **问题二：硬编码的绝对时间等待**，比如 `await page.waitForTimeout(1500)`。这类等待在真实网络环境下可能不够（页面卡顿导致按钮还没出现就点了）也可能过多（白白拉长录制时间且不受配音节奏控制）。应该统一替换成基于状态的等待：
 
@@ -54,20 +54,20 @@ await page.getByText('Excel').click();
 
 **问题三：脆弱选择器**。如果 codegen 因为页面缺少语义化标签（没有 `aria-label`、按钮用 `<div onclick>` 实现）而退化生成了 `page.locator('.css-3xk2j9')` 这种基于自动生成 class 的选择器，要么推动前端加上语义化属性（长期最优解），要么在清洗脚本时替换为更稳定的替代定位方式，比如相对文本、相对父容器结构。这一步做得好坏，直接决定这套流水线在产品持续迭代下的"保质期"。
 
-清洗脚本的标准结构（每个片段包裹成一个具名的异步函数，供编排器调用）：
+清洗后的 `record.spec.js` 是一份连续脚本，各个业务动作之间该停留多久，由写脚本的人凭观感直接决定（想让观众多看一眼某个界面，就多留一个 `waitForTimeout`），不依赖任何外部配置驱动：
 
-```typescript
-// src/codegen/steps/open-report-page.ts
-import { Page } from "playwright";
+```javascript
+// feature-07-export-report/record.spec.js（清洗后的片段）
+await page.getByRole("link", { name: "报表" }).click();
+await page.waitForURL("**/reports");
+await page.getByLabel("时间范围").click();
+await page.getByText("最近30天").click();
+await page.getByLabel("数据维度").selectOption("按渠道");
+await page.waitForTimeout(1500); // 留给观众看清页面筛选结果，纯粹凭观感决定的停留
 
-export async function openReportPage(page: Page): Promise<void> {
-  await page.getByRole("link", { name: "报表" }).click();
-  await page.waitForURL("**/reports");
-  await page.getByLabel("时间范围").click();
-  await page.getByText("最近30天").click();
-  await page.getByLabel("数据维度").selectOption("按渠道");
-  // 停留由编排器根据 Spec 的 pace 配置统一控制，脚本本身不硬编码等待
-}
+await page.getByRole("button", { name: "导出报表" }).click();
+await page.getByText("Excel").waitFor({ state: "visible" });
+await page.getByText("Excel").click();
 ```
 
 ## 4.4 选择器稳定性策略
@@ -81,53 +81,47 @@ export async function openReportPage(page: Page): Promise<void> {
 
 ## 4.5 可复用片段库
 
-像"登录""关闭引导弹窗""切换到某个工作区"这类几乎每个功能点视频都要用到的前置操作，应该沉淀成公共片段，避免每个 Feature Spec 都重新录一遍：
+像"登录""关闭引导弹窗""切换到某个工作区"这类几乎每个功能点视频都要用到的前置操作，应该沉淀成一个共享函数，供各个 `record.spec.js` 直接 `require`：
 
-```typescript
-// src/codegen/steps/common/login.ts
-import { Page } from "playwright";
-
-export async function login(page: Page, username: string, password: string): Promise<void> {
-  await page.goto(process.env.TARGET_BASE_URL!);
+```javascript
+// common/login.js
+async function login(page, username, password) {
+  await page.goto(process.env.ADMIN_URL);
   await page.getByLabel("用户名").fill(username);
   await page.getByLabel("密码").fill(password);
   await page.getByRole("button", { name: "登录" }).click();
   await page.waitForURL("**/dashboard");
 }
+module.exports = { login };
 ```
 
-在编排器里，任何 Feature Spec 只要 `target.account` 字段存在，就自动在所有 `action` 步骤之前插入一次 `login()` 调用，Spec 本身不需要显式声明"第一步是登录"。
+```javascript
+// feature-07-export-report/record.spec.js
+const { login } = require("../common/login");
 
-## 4.6 片段的冒烟测试
-
-每个清洗后的片段，建议用 Playwright Test 写一个最小化的可运行验证，在正式合成录制之前先确认脚本本身是健康的：
-
-```typescript
-// src/codegen/steps/__smoke__/open-report-page.smoke.ts
-import { chromium } from "playwright";
-import { login } from "../common/login";
-import { openReportPage } from "../open-report-page";
-
-(async () => {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  await login(page, process.env.DEMO_USERNAME!, process.env.DEMO_PASSWORD!);
-  await openReportPage(page);
-  console.log("✅ open-report-page 冒烟测试通过");
-  await browser.close();
-})();
+test("导出报表", async ({ page }) => {
+  await login(page, process.env.DEMO_USERNAME, process.env.DEMO_PASSWORD);
+  // ... 后续操作
+});
 ```
 
-可以在编排器启动录制前，自动遍历 Spec 里所有 `codegen_ref` 对应的片段，逐一跑一遍 headless 冒烟测试，任何一个失败就提前中止，而不是带着录制录屏一起失败后再排查（这是 09 章编排器实现里 `preflightCheck` 函数要做的事情）。
+## 4.6 录制前先跑一遍冒烟检查
+
+正式录制（05 章）会同时启动屏幕录制和浏览器自动化，一旦 `record.spec.js` 里的选择器失效，浪费的不只是重新调试的时间，还有一段已经录废的视频。稳妥的做法是在真正触发录制之前，先用 headless 模式把整个脚本跑一遍：
+
+```bash
+npx playwright test record.spec.js --headed=false
+```
+
+跑通再进入 05 章的正式录制流程；跑不通就先按 17 章讲的方法把报错交给 AI 处理，不要带着还会报错的脚本去做真正的录制。
 
 ## 4.7 codegen 层的产物边界
 
-到本章结束，`src/codegen/steps/` 目录下应该积累了：
+到本章结束，一个功能点目录下应该有：
 
-- 若干个公共片段（login 等）
-- 每个 Feature Spec 的 `codegen_ref` 对应的具名异步函数
-- 对应的冒烟测试
+- 一份清洗过的 `record.spec.js`（03 章已经展示过完整例子）
+- 如果有跨功能点复用的前置操作（登录等），额外一个 `common/` 目录下的共享函数
 
-这些片段是"纯操作逻辑"，**不包含任何录制、等待节奏、配音相关代码**——节奏控制、录制启停都由 05 章的 Record 层和 09 章的编排器负责，职责边界要分清楚，否则片段没法在"冒烟测试"和"正式录制"两种场景下复用。
+这份脚本只包含操作逻辑本身，**该等多久、什么时候截图、什么时候说话，都直接写在脚本里，不依赖任何外部配置驱动**——03 章已经解释过为什么这三份文件（`record.spec.js`/`timeline.json`/`meta.json`）要保持这样的职责边界。
 
-下一章讲这些操作脚本如何和屏幕/浏览器录制结合，产出分段视频文件。
+下一章讲这份脚本如何和屏幕录制同步执行，产出一条完整的原始录像。

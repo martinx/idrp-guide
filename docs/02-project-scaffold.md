@@ -164,7 +164,7 @@ dotenv.config({ path: path.resolve(process.cwd(), ".env.local"), override: false
 如果这套流水线会被多名工程师/产品经理共同使用，还建议补充两条约定：
 
 1. **`specs/` 目录按业务模块二级分类**，避免几十个 Feature Spec 平铺在一层目录里难以检索，例如 `specs/reports/feature-07-export-report.yaml`、`specs/settings/feature-12-notification-rule.yaml`。
-2. **codegen 片段（`src/codegen/steps/`）与 Feature Spec 保持相同的分类结构**，一个 Feature Spec 涉及的所有 `codegen_ref` 片段放在同名子目录下，比如 `src/codegen/steps/reports/open-report-page.ts`，避免片段文件散落在同一层目录里，长期积累后难以判断某个片段是否还被引用、能否安全删除。
+2. **功能点目录按业务模块分类存放**，比如 `feature-reports-export/`、`feature-settings-notification/`，而不是所有功能点平铺在同一层，长期积累后才不会难以检索。
 
 这两条约定在项目早期（Feature Spec 数量个位数）看起来是多余的，但一旦规模上升到几十上百个功能点，会显著降低维护成本，建议从项目第一天就按这个结构组织，而不是等到目录混乱后再重构。
 

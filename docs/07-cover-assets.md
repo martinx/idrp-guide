@@ -1,6 +1,6 @@
 # 07 封面与素材生成
 
-本章生成 Feature Spec 里 `kind: cover` 步骤（片头/片尾）所需的静态画面，以及贯穿全片的视觉规范（品牌色、字体、排版）。核心思路是：**用写 HTML/CSS 的方式设计封面模板，再用 Playwright 截图，而不是用 ImageMagick/Canvas 手写绘图代码**——前端团队写 HTML/CSS 的能力远高于手写像素绘图代码，复用这个能力成本最低、效果最可控。
+本章生成片头/片尾所需的静态画面，以及贯穿全片的视觉规范（品牌色、字体、排版）。这些素材是否要用、用哪个文件，由 09 章讲的 meta.json 决定——记住 08 章 8.5 节的教训：素材文件存在不代表要启用，meta.json 里必须显式打开开关。核心思路是：**用写 HTML/CSS 的方式设计封面模板，再用 Playwright 截图，而不是用 ImageMagick/Canvas 手写绘图代码**——前端团队写 HTML/CSS 的能力远高于手写像素绘图代码，复用这个能力成本最低、效果最可控。
 
 ## 7.1 为什么选 HTML 截图而不是 Canvas/ImageMagick
 
@@ -131,7 +131,7 @@ export function loadRule(): RuleConfig {
 </html>
 ```
 
-模板里的 CSS 变量（`--primary-color` 等）和 `#title`/`#badge` 的文本内容都通过截图脚本动态注入，模板文件本身不写死任何具体功能点的信息，保证一份模板服务所有 Feature Spec。
+模板里的 CSS 变量（`--primary-color` 等）和 `#title`/`#badge` 的文本内容都通过截图脚本动态注入，模板文件本身不写死任何具体功能点的信息，保证一份模板服务所有功能点。
 
 ## 7.4 截图生成脚本
 
@@ -221,7 +221,7 @@ export async function coverImageToClip(opts: {
 
 ## 7.6 批量生成与素材复用
 
-如果同一个产品线的多个 Feature Spec 共享同一套品牌规范（几乎总是如此），封面模板和 `render-cover.ts` 完全复用，唯一变化的输入只是 `title` 文本。可以写一个批量脚本，遍历 `specs/` 目录下所有 Spec，为每个 Spec 预生成封面图，作为 CI 里的一个独立、可缓存的步骤（封面生成不依赖任何浏览器操作录制，是全流程里最快、最适合提前批量跑的一环）：
+如果同一个产品线的多个功能点共享同一套品牌规范（几乎总是如此），封面模板和 `render-cover.ts` 完全复用，唯一变化的输入只是 `title` 文本（从各自的 meta.json 读取）。可以写一个批量脚本，遍历所有功能点目录，为每个功能点预生成封面图，作为 CI 里的一个独立、可缓存的步骤（封面生成不依赖任何浏览器操作录制，是全流程里最快、最适合提前批量跑的一环）：
 
 ```typescript
 // src/cover/batch-render.ts

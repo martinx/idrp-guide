@@ -1,368 +1,137 @@
-# 09 全流程编排器实现
+# 09 命令行编排：让每一步都能单独重跑
 
-本章把 03～08 章的所有模块串成一个命令：`npm run run:feature -- specs/feature-07-export-report.yaml`，运行完就在 `output/` 目录得到成片。这是全书唯一一处需要把各章代码"接线"在一起的地方，重点是执行顺序、错误处理、以及每一步产物如何传递给下一步。
+前几章讲了每个环节自己的原理。本章讲这些环节怎么被组织成一套命令行工具——重点不是"用什么语言写编排器"，而是一个更重要的设计决定：**整条流水线的"状态"就是文件系统里那几个约定命名的文件，不是任何数据库或者内存里的状态机**。这个决定直接决定了"改一个字，几十秒出新片"能不能做到。
 
-## 9.1 执行顺序总览
+## 9.1 用文件名本身表达流水线状态
 
-结合 00 章的架构图和 06 章"音频先行"的核心原则，真正的执行顺序是：
+每个功能点对应一个目录，目录里几个约定命名的文件，就是这个功能点当前处于流水线的哪一步：
 
 ```
-1. 加载并校验 Feature Spec（03章 loadFeatureSpec）
-2. Preflight：冒烟测试所有 codegen_ref 片段（04章 4.6节）
-3. 批量生成配音 + 计算每步 holdSec（06章 synthesizeFeatureNarration）
-4. 生成封面/片尾静态图并转成视频片段（07章）
-5. 按 holdSec 驱动，逐步执行操作脚本并录制（04+05章）
-6. 规范化所有分段编码参数、贴合音频（08章 8.2/8.3节）
-7. 拼接所有分段（08章 8.4节）
-8. 生成字幕并按 Spec 配置烧录/封装（08章 8.5节）
-9. 视情况混入背景音乐（08章 8.6节）
-10. 最终导出规范化（08章 8.7节）
-11. 清理 work/ 中间产物（可选，见9.5节）
+feature-07-export-report/
+├── recording.mov       ← 有这个文件，说明"录制"这一步完成了
+├── timeline.json        ← （可选）自动化脚本产出的时间点文本
+├── subtitles.srt        ← 有这个文件，说明"字幕"这一步完成了
+├── ai_dub.wav           ← 有这个文件，说明"配音"这一步完成了
+├── record-offset.txt    ← 录制起始不安全空档的秒数（08章2节用到）
+├── meta.json            ← 这个功能点的配置（标题、发音人、是否要封面/BGM）
+└── feature-07-export-report.mp4   ← 有这个文件，说明"合成"这一步完成了
 ```
 
-注意第 3 步（配音+计时）在第 5 步（真正操作录制）**之前**完成，这是 00 章 0.4 节强调的关键顺序，任何试图"先录后配"的实现都会破坏整套时长驱动逻辑。
+查看一个功能点当前进度，不需要读任何数据库，直接看这几个文件存不存在、新不新：
 
-## 9.2 编排器主体代码
+```bash
+status() {
+  local dir="$1"
+  [ -f "$dir/recording.mov" ]  && echo "✅ recording.mov" || echo "⬜ recording.mov 缺失"
+  [ -f "$dir/subtitles.srt" ]  && echo "✅ subtitles.srt ($(grep -c '^[0-9]' "$dir/subtitles.srt") 条)" || echo "⬜ subtitles.srt 缺失"
+  [ -f "$dir/ai_dub.wav" ]     && echo "✅ ai_dub.wav" || echo "⬜ ai_dub.wav 缺失"
+  [ -f "$dir/$(basename "$dir").mp4" ] && echo "✅ 成片已生成" || echo "⬜ 成片缺失"
+}
+```
 
-```typescript
-// src/orchestrator/run-feature.ts
-import path from "path";
-import fs from "fs";
-import { loadFeatureSpec } from "../spec/loader";
-import { FeatureSpec, FeatureStep } from "../spec/schema";
-import { loadRule } from "../util/rule";
-import { synthesizeFeatureNarration } from "../dub/synthesize-feature";
-import { StepTiming } from "../dub/pacing";
-import { renderCover } from "../cover/render-cover";
-import { coverImageToClip } from "../cover/cover-to-clip";
-import { startBrowserRecording, stopBrowserRecording } from "../recorder/browser-recorder";
-import { startScreenRecording, stopScreenRecording } from "../recorder/screen-recorder";
-import { normalizeSegment } from "../mix/normalize-segment";
-import { attachAudioToVideo } from "../mix/attach-audio";
-import { concatSegments } from "../mix/concat";
-import { writeSrtFile } from "../mix/subtitle";
-import { burnSubtitle } from "../mix/burn-subtitle";
-import { mixBackgroundMusic } from "../mix/background-music";
-import { finalExport } from "../mix/export";
-import { preflightCheck } from "./preflight";
-import { codegenSteps } from "../codegen/registry";
-import { login } from "../codegen/steps/common/login";
-import { logger } from "../util/logger";
+这个"文件即状态"的设计带来一个关键好处：**任何一步都可以单独重跑，只要它依赖的上游文件还在**。改了字幕文本，只需要重新生成 `ai_dub.wav` 和成片，`recording.mov` 完全不用碰——这不是靠某个"任务依赖图"框架实现的，只是因为每一步的输入输出都是磁盘上明确的文件。
 
-async function main() {
-  const specPath = process.argv[2];
-  if (!specPath) {
-    console.error("用法: npm run run:feature -- specs/xxx.yaml");
-    process.exit(1);
-  }
+## 9.2 命令与它们依赖/产出的文件
 
-  const spec = loadFeatureSpec(specPath);
-  const rule = loadRule();
-  const workDir = path.join("work", spec.id);
-  const rawDir = path.join(workDir, "raw");
-  const audioDir = path.join(workDir, "audio");
-  fs.mkdirSync(rawDir, { recursive: true });
-  fs.mkdirSync(audioDir, { recursive: true });
+| 命令 | 依赖 | 产出 | 典型耗时 |
+|---|---|---|---|
+| `codegen` | 无（人工操作浏览器） | `nav-draft.spec.js`（选择器草稿） | 几分钟，人工操作为主 |
+| `sync` | `nav-draft.spec.js` | 更新 `record.spec.js` + `timeline.json`（交给 AI 处理，见17章） | 1～2分钟 |
+| `record` | `record.spec.js` | `recording.mov` + `timeline.json`→`subtitles.srt` + `record-offset.txt` | 1～3分钟（等于操作本身耗时） |
+| `srt` | `recording.mov` | `subtitles.srt`（若已存在且更新则跳过，见6.1节） | 几秒～1分钟（ASR兜底时较慢） |
+| `dub` | `subtitles.srt` | `ai_dub.wav` | 十几秒到1分钟 |
+| `mix` | `recording.mov` + `ai_dub.wav` + `meta.json` | 成片 `.mp4` | 十几秒 |
+| `redub` | 手改后的 `subtitles.srt` | 重新生成 `ai_dub.wav` + 成片 | 几十秒，**不碰录制** |
+| `burn` | 成片 + `subtitles.srt` | 烧录字幕后的最终版本 | 几十秒 |
+| `trans` | `subtitles.srt` | `subtitles_en.srt`（DeepSeek翻译） | 十几秒 |
+| `en` | `subtitles_en.srt` | 英文配音 + 英文成片 | 几十秒 |
+| `all` | `recording.mov` | 一次跑完 srt→dub→mix | 1～2分钟 |
+| `status` | 无 | 打印当前功能点各文件的完成情况 | 秒级 |
 
-  logger.info(`[${spec.id}] 开始处理: ${spec.title}`);
+`all` 是最常用的命令，把 `srt → dub → mix` 串起来一次跑完；但一旦某个环节要单独调整（最常见的是改字幕文案），直接用对应的单步命令（`redub`），不需要重新走 `all`。
 
-  // 步骤1+2: Spec 已在 loadFeatureSpec 中校验；此处做 codegen 片段冒烟测试
-  logger.info(`[${spec.id}] Preflight 检查...`);
-  await preflightCheck(spec);
+## 9.3 主入口：类型判断 + 分发
 
-  // 步骤3: 批量生成配音 + 计算时长
-  logger.info(`[${spec.id}] 生成配音...`);
-  const timings: Record<string, StepTiming> = await synthesizeFeatureNarration(spec, workDir);
+编排器的主入口做两件事：判断这个功能点是"录屏类型"还是其他类型（比如 07 章会提到的截图幻灯片类型），然后分发到对应的处理流程：
 
-  // 步骤4: 封面/片尾
-  logger.info(`[${spec.id}] 生成封面...`);
-  const coverSegments = await renderCoverSteps(spec, rule, workDir, timings);
+```bash
+main() {
+  local cmd="$1"; local dir=$(resolve_dir "$2")
 
-  // 步骤5: 操作步骤录制
-  logger.info(`[${spec.id}] 执行操作并录制...`);
-  const actionSegments = await runActionSteps(spec, rule, workDir, timings);
+  case "$cmd" in
+    record)  cmd_record "$dir" ;;
+    codegen) cmd_codegen "$dir" ;;
+    sync)    cmd_sync "$dir" ;;
+    srt)     extract_srt "$dir" ;;
+    dub)     srt_to_dub "$dir" ;;
+    redub)   cmd_redub "$dir" ;;
+    mix)     compose "$dir" ;;
+    burn)    cmd_burn "$dir" ;;
+    trans)   translate_srt "$dir" ;;
+    en)      cmd_en "$dir" ;;
+    all)     cmd_all "$dir" ;;
+    status)  show_status "$dir" ;;
+    *) echo "未知命令: $cmd"; exit 1 ;;
+  esac
+}
+```
 
-  // 合并所有分段，按 Spec 步骤原始顺序排列（cover/action 混合）
-  const orderedSegments = spec.steps.map(
-    (step) => coverSegments[step.id] ?? actionSegments[step.id]
-  );
+`cmd_all` 内部按类型分流，並且在真正开始 `srt → dub → mix` 之前，会先做一次环境自检（ffmpeg、语音识别依赖是否齐全），提前把"环境没装好"这类问题暴露出来，而不是跑到中途才报错：
 
-  // 步骤6+7: 规范化 + 拼接
-  logger.info(`[${spec.id}] 拼接分段...`);
-  const normalizedPaths: string[] = [];
-  for (const seg of orderedSegments) {
-    const normPath = seg.replace(/\.(mp4|webm)$/, ".norm.mp4");
-    await normalizeSegment({
-      inputPath: seg,
-      outputPath: normPath,
-      resolution: rule.recording.output_resolution,
-      fps: rule.recording.fps,
-    });
-    normalizedPaths.push(normPath);
-  }
+```bash
+cmd_all() {
+  local dir="$1"
+  check_env || return 1
+  extract_srt "$dir" || return 1
+  srt_to_dub "$dir" || return 1
+  compose "$dir"
+  show_status "$dir"
+}
+```
 
-  // 把每段视频和对应音频贴合（cover步骤的"音频"是它自己的解说配音，action步骤同理）
-  const withAudioPaths: string[] = [];
-  for (let i = 0; i < spec.steps.length; i++) {
-    const step = spec.steps[i];
-    const timing = timings[step.id];
-    const withAudioPath = normalizedPaths[i].replace(".norm.mp4", ".withaudio.mp4");
-    await attachAudioToVideo({
-      videoPath: normalizedPaths[i],
-      audioPath: timing.audioPath,
-      holdSec: timing.holdSec,
-      outputPath: withAudioPath,
-    });
-    withAudioPaths.push(withAudioPath);
-  }
+## 9.4 配置：三级合并的 meta.json，而不是一份扁平配置
 
-  const concatPath = path.join(workDir, "concat.mp4");
-  await concatSegments({ segmentPaths: withAudioPaths, outputPath: concatPath, workDir });
+每个功能点的展示层配置（标题、发音人、是否要封面/BGM、字幕样式、分辨率）用 `meta.json` 表达，采用**三级合并**：内置默认值 → 项目级 `meta.json`（放在所有功能点的共同父目录，团队统一规范放这里）→ 功能级 `meta.json`（只覆盖这一个功能点的个性化配置）。
 
-  // 步骤8: 字幕
-  let videoWithSubtitle = concatPath;
-  if (spec.output.subtitle !== "none") {
-    const srtPath = path.join(workDir, "subtitle.srt");
-    writeSrtFile(spec, timings, srtPath);
-    if (spec.output.subtitle === "burned_in") {
-      videoWithSubtitle = path.join(workDir, "with-subtitle.mp4");
-      await burnSubtitle({ videoPath: concatPath, srtPath, rule, outputPath: videoWithSubtitle });
+```python
+def load_meta(feature_dir: str) -> dict:
+    project_dir = os.path.dirname(feature_dir)
+    defaults = {
+        "voice": "zh-CN-XiaoxiaoNeural", "voice_en": "en-US-AvaNeural",
+        "cover": None, "outro": None, "cover_duration": 3, "outro_duration": 3,
+        "bgm": None, "bgm_volume": 0.15,
+        "resolution": "1920x1080", "fps": 30, "dub_offset": 0,
     }
-    // soft 模式的软字幕封装留给 finalExport 前的单独处理，此处从略，思路见08章8.5节
-  }
-
-  // 步骤9: 背景音乐
-  let videoWithMusic = videoWithSubtitle;
-  if (spec.output.background_music !== "none") {
-    videoWithMusic = path.join(workDir, "with-music.mp4");
-    await mixBackgroundMusic({
-      videoPath: videoWithSubtitle,
-      musicPath: spec.output.background_music,
-      outputPath: videoWithMusic,
-    });
-  }
-
-  // 步骤10: 最终导出
-  fs.mkdirSync("output", { recursive: true });
-  const finalPath = path.join("output", `${spec.id}.mp4`);
-  await finalExport({ inputPath: videoWithMusic, outputPath: finalPath, rule });
-
-  logger.info(`[${spec.id}] ✅ 完成: ${finalPath}`);
-}
-
-main().catch((err) => {
-  logger.error(err);
-  process.exit(1);
-});
+    project_cfg = read_json(f"{project_dir}/meta.json")
+    feature_cfg = read_json(f"{feature_dir}/meta.json")
+    merged = deep_merge(defaults, project_cfg)
+    merged = deep_merge(merged, feature_cfg)
+    return merged
 ```
 
-## 9.3 封面步骤与操作步骤的执行细节
+这个三级合并解决的实际问题是：**大部分配置项，一个项目里所有功能点都应该统一**（品牌字体、字幕样式、要不要加公司 logo），只有少数几项需要针对某个功能点单独调整（这一条视频的标题、要不要额外加背景音乐）。项目级配置承担"统一规范"的角色，功能级配置只用来处理例外，不需要每个功能点都把全部配置项抄一遍。
 
-```typescript
-// src/orchestrator/render-cover-steps.ts
-import path from "path";
-import { FeatureSpec } from "../spec/schema";
-import { RuleConfig } from "../util/rule";
-import { StepTiming } from "../dub/pacing";
-import { renderCover } from "../cover/render-cover";
-import { coverImageToClip } from "../cover/cover-to-clip";
+`resolve_asset`（8.5 节提到的"素材存在不代表要用"）也是这个配置系统的一部分——它同时查功能目录和项目级 `resources/` 目录，但只有配置里显式打开开关才会真正采用查到的文件。
 
-export async function renderCoverSteps(
-  spec: FeatureSpec,
-  rule: RuleConfig,
-  workDir: string,
-  timings: Record<string, StepTiming>
-): Promise<Record<string, string>> {
-  const result: Record<string, string> = {};
+## 9.5 幂等性与增量跳过
 
-  for (const step of spec.steps) {
-    if (step.kind !== "cover") continue;
-    const imgPath = path.join(workDir, `${step.id}.png`);
-    await renderCover({
-      title: spec.title,
-      badgeText: step.id === "intro" ? "功能演示" : "感谢观看",
-      rule,
-      outputPath: imgPath,
-    });
+`vt all`（或者幻灯片模式下的合成命令）在重复运行时会做增量检查：如果所有输入素材（录像、字幕、配音、meta.json）都没有比上一次的成片更新，直接跳过合成，不重复消耗时间：
 
-    const clipPath = path.join(workDir, "raw", `${step.id}.mp4`);
-    await coverImageToClip({
-      imagePath: imgPath,
-      durationSec: timings[step.id].holdSec,
-      fps: rule.recording.fps,
-      outputPath: clipPath,
-    });
-    result[step.id] = clipPath;
-  }
+```bash
+should_skip_rebuild() {
+  local dir="$1"
+  local out="$dir/$(basename "$dir").mp4"
+  [ ! -f "$out" ] && return 1  # 还没生成过，不跳过
 
-  return result;
+  for src in "$dir/recording.mov" "$dir/subtitles.srt" "$dir/ai_dub.wav" "$dir/meta.json"; do
+    [ -f "$src" ] && [ "$src" -nt "$out" ] && return 1  # 有输入比成片新，不跳过
+  done
+  return 0  # 全部没变化，跳过
 }
 ```
 
-```typescript
-// src/orchestrator/run-action-steps.ts
-import path from "path";
-import { FeatureSpec, FeatureStep } from "../spec/schema";
-import { RuleConfig } from "../util/rule";
-import { StepTiming } from "../dub/pacing";
-import { startBrowserRecording, stopBrowserRecording } from "../recorder/browser-recorder";
-import { startScreenRecording, stopScreenRecording } from "../recorder/screen-recorder";
-import { codegenSteps } from "../codegen/registry";
-import { login } from "../codegen/steps/common/login";
+这个检查配合 `-u/--force` 一类的强制重跑开关（需要的时候可以绕过跳过逻辑），让批量处理多个功能点时（比如 CI 里跑一遍全部功能点检查是否都能正常出片）不会做无意义的重复工作。
 
-export async function runActionSteps(
-  spec: FeatureSpec,
-  rule: RuleConfig,
-  workDir: string,
-  timings: Record<string, StepTiming>
-): Promise<Record<string, string>> {
-  const result: Record<string, string> = {};
-  const actionSteps = spec.steps.filter((s) => s.kind === "action");
-  if (actionSteps.length === 0) return result;
+## 9.6 小结
 
-  // 浏览器类步骤统一在一个会话内连续执行，减少重复登录/加载开销
-  const browserSteps = actionSteps.filter((s) => (s as any).capture !== "desktop");
-  const desktopSteps = actionSteps.filter((s) => (s as any).capture === "desktop");
-
-  if (browserSteps.length > 0) {
-    const session = await startBrowserRecording({
-      baseUrl: spec.target.base_url,
-      viewport: spec.target.viewport,
-      videoDir: path.join(workDir, "raw", "_browser_tmp"),
-      headless: true,
-    });
-
-    if (spec.target.account) {
-      await login(
-        session.page,
-        process.env[spec.target.account.username_env]!,
-        process.env[spec.target.account.password_env]!
-      );
-    }
-
-    for (const step of browserSteps) {
-      const stepFn = codegenSteps[step.codegen_ref!];
-      const startedAt = Date.now();
-      await stepFn(session.page);
-
-      if (step.pace?.wait_for) {
-        await session.page.waitForSelector(step.pace.wait_for, { state: "visible" });
-      }
-
-      const elapsedSec = (Date.now() - startedAt) / 1000;
-      const remaining = Math.max(0, timings[step.id].holdSec - elapsedSec);
-      await session.page.waitForTimeout(remaining * 1000);
-
-      // Playwright recordVideo 是整个 context 一条连续视频，这里通过“分段落盘”技巧，
-      // 为每个 step 单独开关一个 context 来获得独立文件，牺牲一点会话复用换取分段可控性
-    }
-
-    const videoPath = await stopBrowserRecording(session);
-    // 简化处理：仅一个连续录制时，把整段视频按每步 holdSec 切分成独立文件
-    await splitContinuousVideo(videoPath, browserSteps, timings, workDir, result);
-  }
-
-  for (const step of desktopSteps) {
-    const outputPath = path.join(workDir, "raw", `${step.id}.mp4`);
-    const handle = startScreenRecording({
-      outputPath,
-      fps: rule.recording.fps,
-      viewport: spec.target.viewport,
-      deviceIndex: process.env.SCREEN_DEVICE_INDEX ?? "1",
-      platform: process.platform === "darwin" ? "darwin" : "linux",
-    });
-    // 此处调用对应的 shell_ref 交互脚本（09.4节说明），并等待 holdSec
-    await new Promise((r) => setTimeout(r, timings[step.id].holdSec * 1000));
-    await stopScreenRecording(handle);
-    result[step.id] = outputPath;
-  }
-
-  return result;
-}
-
-async function splitContinuousVideo(
-  videoPath: string,
-  steps: FeatureStep[],
-  timings: Record<string, StepTiming>,
-  workDir: string,
-  result: Record<string, string>
-): Promise<void> {
-  const { execFile } = await import("child_process");
-  const { promisify } = await import("util");
-  const execFileAsync = promisify(execFile);
-  const path = await import("path");
-
-  let cursor = 0;
-  for (const step of steps) {
-    const duration = timings[step.id].holdSec;
-    const outPath = path.join(workDir, "raw", `${step.id}.mp4`);
-    await execFileAsync("ffmpeg", [
-      "-y", "-i", videoPath,
-      "-ss", String(cursor), "-t", String(duration),
-      "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "18",
-      outPath,
-    ]);
-    result[step.id] = outPath;
-    cursor += duration;
-  }
-}
-```
-
-**关于"整段录制后再切分" vs "每步单独开一个 context 录制"的取舍说明**：Playwright 的 `recordVideo` 是绑定在 `BrowserContext` 生命周期上的，一个 context 只产出一条连续视频。为每一步都新开一个 context 可以获得天然分段的文件，但会导致每步都要重新加载页面/重新登录状态，操作之间的页面上下文无法延续（比如"打开报表页"和"点击导出"这两步在真实交互里应该是同一个页面会话的连续操作）。因此这里选择"整个 Feature 的浏览器步骤在一个 context 内连续录制，结束后按各步时长精确切分"的方案，切分点的时间戳完全由我们自己在 06 章计算的 `holdSec` 累加得出，精度可控，不依赖任何猜测。
-
-## 9.4 Preflight 检查实现
-
-```typescript
-// src/orchestrator/preflight.ts
-import { chromium } from "playwright";
-import { FeatureSpec } from "../spec/schema";
-import { codegenSteps } from "../codegen/registry";
-import { login } from "../codegen/steps/common/login";
-
-export async function preflightCheck(spec: FeatureSpec): Promise<void> {
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: spec.target.viewport });
-
-  try {
-    await page.goto(spec.target.base_url);
-    if (spec.target.account) {
-      await login(
-        page,
-        process.env[spec.target.account.username_env]!,
-        process.env[spec.target.account.password_env]!
-      );
-    }
-
-    for (const step of spec.steps) {
-      if (step.kind !== "action" || (step as any).capture === "desktop") continue;
-      const stepFn = codegenSteps[step.codegen_ref!];
-      if (!stepFn) {
-        throw new Error(`Preflight 失败: codegen_ref "${step.codegen_ref}" 未在 registry 中注册`);
-      }
-      await stepFn(page);
-    }
-  } finally {
-    await browser.close();
-  }
-}
-```
-
-Preflight 用真实的 headless 浏览器把所有操作步骤跑一遍（不录制、不生成任何产物），任何选择器失效、页面结构变化导致的错误都会在这里立刻抛出并中止整个流程，避免"配音、封面都生成完了，最后录制阶段才发现某步脚本挂了"的时间浪费。
-
-## 9.5 中间产物清理与幂等性
-
-`work/<feature-id>/` 目录里堆积的中间文件（原始录制、未归一化分段、临时 concat 列表）不需要长期保留。编排器可以在最终导出成功后自动清理：
-
-```typescript
-// 在 main() 的最后追加
-if (process.env.KEEP_WORK_DIR !== "1") {
-  fs.rmSync(workDir, { recursive: true, force: true });
-  logger.info(`[${spec.id}] 已清理中间产物: ${workDir}`);
-}
-```
-
-保留 `KEEP_WORK_DIR=1` 这个开关是为了调试时能检查中间某一步的产物（比如怀疑字幕时间轴不对，需要单独看 `subtitle.srt` 和某个分段视频），生产批量运行时默认清理，避免磁盘占用无限增长。
-
-整个编排器是幂等的：只要 `specs/*.yaml` 和 `codegen/steps/*` 不变，重复运行会得到内容一致的成片（配音时长、字幕时间轴都是确定性计算得出，唯一的非确定性来源是 TTS 供应商的合成结果可能有微小的音频差异，以及页面真实响应时间的波动，但不影响最终成片的正确性,只影响极小的时长误差）。
-
-下一章讲这套流水线跑起来之前，人工必须过一遍的检查清单，防止把不该出现在演示视频里的东西录进去。
+本章的编排器设计非常朴素：一个 `main` 函数按命令分发、几个字符串约定的文件名表达状态、一个三级合并的 JSON 做配置。没有引入任务队列、没有引入状态机框架、没有引入数据库——**朴素到几乎不需要文档就能读懂的实现，恰恰是它能被快速理解、快速改、快速排障的原因**。11 章会讲这套朴素设计在批量处理、CI 集成场景下要做哪些补充；16 章开始会讲清楚，这些命令背后，有多少工作其实是交给 AI 完成的。

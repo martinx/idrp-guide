@@ -1,309 +1,189 @@
-# 08 音视频合成 Cover-Mix
+# 08 合成成片：裁剪、配音混流、封面拼接、字幕烧录
 
-本章是整条流水线的"总装车间"：把 05 章的操作录制分段、06 章的配音音频、07 章的封面片段，按 Feature Spec 的步骤顺序合成为一条完整成片，同时处理字幕烧录、背景音乐混音、响度与分辨率的最终规范化。
+06 章拿到了配音音频，07 章会拿到封面素材。本章是"总装车间"：把原始录像、配音、封面/封底、字幕，按 00 章 0.4 节讲的"录制优先"顺序合成为一条成片。核心难点不是 ffmpeg 命令本身，而是几个容易被忽略、但真实踩过坑的细节：录制起始的不安全空档要裁掉、配音的全局偏移要和字幕的偏移保持同步、BGM/封底不能因为文件恰好存在就默默启用。
 
 ## 8.1 合成的整体步骤
 
-1. **统一分段视频的编码参数**（分辨率、帧率、像素格式），因为路线一（Playwright webm）和路线二（ffmpeg mp4）产出的编码参数可能不同，拼接前必须对齐，否则 `concat` 会失败或画面错乱。
-2. **把每段操作视频与对应配音音频合并**，配音音频时长已经在 06 章驱动了该步骤的画面停留时长，此处只是简单地把音频轨"贴"到对应视频段上。
-3. **按 Feature Spec 步骤顺序，用 concat demuxer 拼接所有分段**（cover → action... → outro）。
-4. **生成字幕文件**（SRT），按每步的实际起止时间戳对齐。
-5. **烧录字幕（可选）、叠加背景音乐（可选）、做最终响度与分辨率规范化**，导出成片。
-
-## 8.2 统一分段编码参数
-
-```typescript
-// src/mix/normalize-segment.ts
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-
-export async function normalizeSegment(opts: {
-  inputPath: string;
-  outputPath: string;
-  resolution: string; // 例如 "1920x1080"
-  fps: number;
-}): Promise<string> {
-  await execFileAsync("ffmpeg", [
-    "-y",
-    "-i", opts.inputPath,
-    "-vf", `scale=${opts.resolution.replace("x", ":")}:force_original_aspect_ratio=decrease,pad=${opts.resolution.replace("x", ":")}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
-    "-r", String(opts.fps),
-    "-vcodec", "libx264",
-    "-pix_fmt", "yuv420p",
-    "-preset", "veryfast",
-    "-crf", "18",
-    "-an", // 分段视频先剥离音轨，音频单独处理，避免声画不同步的编码问题
-    opts.outputPath,
-  ]);
-  return opts.outputPath;
-}
+```
+recording.mov ──┐
+                ├─▶ 裁剪起始空档 ─▶ 混流配音(+全局偏移) ─▶ 拼接封面/正文/封底
+ai_dub.wav ─────┘                                              │
+                                                                ▼
+                                                        混入BGM(如果显式开启)
+                                                                │
+                                                                ▼
+                                                        内嵌封面帧(缩略图)
+                                                                │
+                                                                ▼
+                                                    烧录字幕(时间戳同步偏移)
+                                                                │
+                                                                ▼
+                                                             成片.mp4
 ```
 
-`scale...force_original_aspect_ratio=decrease,pad=...` 这一组合滤镜的作用是：把不同来源（浏览器录制视口 1440x900、系统录屏可能是其他分辨率）的画面等比缩放后居中填充到统一的 1920x1080 画布，多出的部分用黑边（或按 07 章品牌背景色）填充，而不是直接拉伸变形。
+## 8.2 裁剪录制起始的不安全空档
 
-## 8.3 视频与音频合并
-
-```typescript
-// src/mix/attach-audio.ts
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-
-export async function attachAudioToVideo(opts: {
-  videoPath: string;
-  audioPath: string;
-  holdSec: number;      // 06章计算出的该步骤总时长
-  outputPath: string;
-}): Promise<string> {
-  await execFileAsync("ffmpeg", [
-    "-y",
-    "-i", opts.videoPath,
-    "-i", opts.audioPath,
-    // 视频用 tpad 补齐/裁剪到 holdSec 长度（操作耗时可能略短或略长于配音+缓冲）
-    "-vf", `tpad=stop_mode=clone:stop_duration=${opts.holdSec}`,
-    "-t", String(opts.holdSec),
-    "-map", "0:v:0",
-    "-map", "1:a:0",
-    "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "18",
-    "-c:a", "aac", "-b:a", "160k",
-    "-shortest",
-    opts.outputPath,
-  ]);
-  return opts.outputPath;
-}
-```
-
-`tpad=stop_mode=clone` 的作用是：如果操作录制的画面比 `holdSec` 短（比如页面提前完成了跳转，剩余时间画面已经静止），就复制最后一帧填满剩余时长，避免画面突然黑屏或跳变；`-t` 兜底截断超出部分。这样保证每一段视频的时长精确等于 06 章算出的 `holdSec`，后续拼接时不需要再做时间轴对齐计算。
-
-## 8.4 使用 concat demuxer 拼接
-
-ffmpeg 的 `concat` 有两种模式：filter 模式（灵活但对不同参数的流较敏感）和 demuxer 模式（要求所有输入流参数完全一致，但速度快、无损）。因为 8.2/8.3 两步已经把所有分段规范化到完全一致的编码参数，这里直接用 demuxer 模式：
-
-```typescript
-// src/mix/concat.ts
-import fs from "fs";
-import path from "path";
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-
-export async function concatSegments(opts: {
-  segmentPaths: string[]; // 按 Feature Spec steps 顺序排列
-  outputPath: string;
-  workDir: string;
-}): Promise<string> {
-  const listPath = path.join(opts.workDir, "concat-list.txt");
-  const listContent = opts.segmentPaths
-    .map((p) => `file '${path.resolve(p)}'`)
-    .join("\n");
-  fs.writeFileSync(listPath, listContent);
-
-  await execFileAsync("ffmpeg", [
-    "-y",
-    "-f", "concat",
-    "-safe", "0",
-    "-i", listPath,
-    "-c", "copy", // 参数已统一，直接无损拼接，速度极快
-    opts.outputPath,
-  ]);
-  return opts.outputPath;
-}
-```
-
-## 8.5 字幕生成与烧录
-
-字幕的起止时间戳直接来自 06 章为每步计算的 `holdSec` 累加，不需要另外做语音识别对齐（这也是"音频先行"策略的又一个红利：时间轴是我们自己算出来的，天然精确，不需要用 ASR 反向去猜字幕时间点）。
-
-```typescript
-// src/mix/subtitle.ts
-import fs from "fs";
-import { FeatureSpec } from "../spec/schema";
-import { StepTiming } from "../dub/pacing";
-
-function formatSrtTime(totalSec: number): string {
-  const h = Math.floor(totalSec / 3600);
-  const m = Math.floor((totalSec % 3600) / 60);
-  const s = Math.floor(totalSec % 60);
-  const ms = Math.round((totalSec - Math.floor(totalSec)) * 1000);
-  const pad = (n: number, len = 2) => String(n).padStart(len, "0");
-  return `${pad(h)}:${pad(m)}:${pad(s)},${pad(ms, 3)}`;
-}
-
-export function generateSrt(spec: FeatureSpec, timings: Record<string, StepTiming>): string {
-  let cursor = 0;
-  let index = 1;
-  const lines: string[] = [];
-
-  for (const step of spec.steps) {
-    const timing = timings[step.id];
-    const start = cursor;
-    const end = cursor + timing.holdSec;
-    lines.push(
-      String(index),
-      `${formatSrtTime(start)} --> ${formatSrtTime(end)}`,
-      step.narration,
-      ""
-    );
-    cursor = end;
-    index += 1;
-  }
-
-  return lines.join("\n");
-}
-
-export function writeSrtFile(spec: FeatureSpec, timings: Record<string, StepTiming>, outPath: string): string {
-  fs.writeFileSync(outPath, generateSrt(spec, timings), "utf-8");
-  return outPath;
-}
-```
-
-**烧录字幕（硬字幕，兼容性最好，推荐作为对外分发的默认选项）**：
-
-```typescript
-// src/mix/burn-subtitle.ts
-import { execFile } from "child_process";
-import { promisify } from "util";
-import { RuleConfig } from "../util/rule";
-
-const execFileAsync = promisify(execFile);
-
-export async function burnSubtitle(opts: {
-  videoPath: string;
-  srtPath: string;
-  rule: RuleConfig;
-  outputPath: string;
-}): Promise<string> {
-  // force_style 里的颜色格式是 &HBBGGRR&（ASS 颜色顺序与常见的 RRGGBB 相反，且是 BGR）
-  const style = [
-    `FontName=${opts.rule.brand.font_family_cn}`,
-    "FontSize=20",
-    "PrimaryColour=&HFFFFFF&",
-    "OutlineColour=&H000000&",
-    "BorderStyle=1",
-    "Outline=2",
-    "Alignment=2",
-    "MarginV=60",
-  ].join(",");
-
-  await execFileAsync("ffmpeg", [
-    "-y",
-    "-i", opts.videoPath,
-    "-vf", `subtitles=${opts.srtPath}:force_style='${style}':fontsdir=${escapeFontsDir(opts.rule.brand.font_file_path)}`,
-    "-c:a", "copy",
-    opts.outputPath,
-  ]);
-  return opts.outputPath;
-}
-
-function escapeFontsDir(fontFilePath: string): string {
-  // subtitles 滤镜的 fontsdir 需要目录而非文件路径
-  return fontFilePath.substring(0, fontFilePath.lastIndexOf("/"));
-}
-```
-
-如果不想烧录（希望保留软字幕，方便观众自行开关/翻译），改用 `-c:s mov_text`（mp4 容器）把 SRT 作为独立字幕轨封装进输出文件，播放器需要支持字幕轨切换：
+05 章 5.7 节讲了 ready/go 双信号握手，用来避免"ffmpeg 已经启动、浏览器还没准备好"这段空档被录进去。但即使有这个握手，从"ffmpeg 进程启动"到"编码真正稳定输出"之间仍然有零点几秒的天然延迟——稳妥的做法是把这段延迟的秒数记录下来（比如写进 `record-offset.txt`），在合成这一步**再裁一刀**，双重保险：
 
 ```bash
-ffmpeg -i input.mp4 -i subtitle.srt -c:v copy -c:a copy -c:s mov_text output.mp4
+# compose 阶段读取 record-offset.txt，裁掉开头这一小段
+if [ -f "$dir/record-offset.txt" ]; then
+  offset=$(cat "$dir/record-offset.txt")
+  # 再加 0.3 秒缓冲，宁可多裁一点，不可让不安全画面漏进成片
+  safe_offset=$(python3 -c "print(round(float('$offset') + 0.3, 2))")
+  trim_args=(-ss "$safe_offset")
+fi
 ```
 
-Feature Spec 里 `output.subtitle` 字段（03 章定义）就是用来在这两种模式（以及完全不要字幕）之间做选择的开关，09 章编排器据此调用不同函数。
+这条原则值得单独强调：**任何"理论上不会露出敏感画面"的时间窗口，只要有哪怕零点几秒的不确定性，都应该在录制和合成两个环节各设一道防线，而不是信任其中一道就够了**。10 章的检查清单是最后一道人工防线，这里是自动化流程里的倒数第二道。
 
-## 8.6 背景音乐混音（可选）
+## 8.3 配音混流与全局偏移微调
 
-如果 Feature Spec 的 `output.background_music` 不是 `none`，需要把背景音乐轨和已经贴好的解说配音轨做混合，同时把背景音乐音量压低，避免盖过解说（这个技术叫"音频闪避/ducking"，简化版实现是直接把背景音乐音量固定调低，更精细的版本可以用 `sidechaincompress` 滤镜做动态闪避，此处给出简化版，已能满足大多数功能演示场景）：
-
-```typescript
-// src/mix/background-music.ts
-import { execFile } from "child_process";
-import { promisify } from "util";
-
-const execFileAsync = promisify(execFile);
-
-export async function mixBackgroundMusic(opts: {
-  videoPath: string;      // 已经拼接好、带解说配音的视频
-  musicPath: string;
-  outputPath: string;
-  musicVolume?: number;   // 默认 0.12，明显低于人声，只做氛围铺垫
-}): Promise<string> {
-  const volume = opts.musicVolume ?? 0.12;
-
-  await execFileAsync("ffmpeg", [
-    "-y",
-    "-i", opts.videoPath,
-    "-stream_loop", "-1",     // 背景音乐循环播放，长度不够时自动补齐
-    "-i", opts.musicPath,
-    "-filter_complex",
-    `[1:a]volume=${volume}[bgm];[0:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]`,
-    "-map", "0:v:0",
-    "-map", "[aout]",
-    "-c:v", "copy",
-    "-c:a", "aac", "-b:a", "192k",
-    "-shortest",
-    opts.outputPath,
-  ]);
-  return opts.outputPath;
-}
-```
-
-`duration=first` 保证混音后总时长以视频（第一个输入）为准，背景音乐不会把视频"拖长"。
-
-## 8.7 最终导出规范化
-
-拼接、字幕、混音都完成后，做最后一次统一的响度归一化和编码参数收敛，确保不管中间经过多少次 ffmpeg 调用（每次转码都会有微小的质量损耗累积），最终交付的文件质量和参数是可预期、可复核的：
-
-```typescript
-// src/mix/export.ts
-import { execFile } from "child_process";
-import { promisify } from "util";
-import { RuleConfig } from "../util/rule";
-
-const execFileAsync = promisify(execFile);
-
-export async function finalExport(opts: {
-  inputPath: string;
-  outputPath: string;
-  rule: RuleConfig;
-}): Promise<string> {
-  const [w, h] = opts.rule.recording.output_resolution.split("x");
-
-  await execFileAsync("ffmpeg", [
-    "-y",
-    "-i", opts.inputPath,
-    "-vf", `scale=${w}:${h}`,
-    "-r", String(opts.rule.recording.fps),
-    "-af", "loudnorm=I=-16:LRA=11:TP=-1.5",
-    "-c:v", "libx264",
-    "-profile:v", "high",
-    "-pix_fmt", "yuv420p",
-    "-preset", "medium",     // 最终导出用更高质量的 preset，不再追求编码速度
-    "-crf", "16",
-    "-c:a", "aac", "-b:a", "192k",
-    "-movflags", "+faststart", // 支持网页播放器边下边播
-    opts.outputPath,
-  ]);
-  return opts.outputPath;
-}
-```
-
-`-movflags +faststart` 把 mp4 的元数据索引移到文件头部，是网页/内部培训平台在线播放（而不是先完整下载）的必要设置，很容易被忽略但影响很大。
-
-## 8.8 转场（可选的观感优化）
-
-分段之间如果想要比"硬切"更柔和的视觉效果，可以在 `concat` 之前用 `xfade` 滤镜给相邻片段加交叉淡化转场。因为 `xfade` 要求两两处理、且会略微改变总时长（转场部分是两段画面的重叠），实现复杂度比直接 `concat` 高不少，建议只在对成片质感有更高要求时再引入，功能性演示视频优先保证信息传达清晰，转场是锦上添花而非必需：
+把裁剪后的录像和配音混流成一条视频，同时应用 00 章 0.4 节提到的**全局 `dub_offset`**——这是唯一一个需要人工感知"听感对不对得上"的调节点，粒度是整条配音轨，而不是逐句调整：
 
 ```bash
-ffmpeg -i seg1.mp4 -i seg2.mp4 -filter_complex \
-  "[0:v][1:v]xfade=transition=fade:duration=0.4:offset=4.6[v]" \
-  -map "[v]" -c:v libx264 transition_1_2.mp4
+compose() {
+  local rec="$1" dub="$2" out="$3" dub_offset="$4"
+
+  local dub_input_args=() audio_filter_args=() pad_filter=""
+
+  if python3 -c "exit(0 if $dub_offset < 0 else 1)"; then
+    # 负偏移：配音整体提前，跳过配音开头对应的秒数
+    local skip=$(python3 -c "print(-$dub_offset)")
+    dub_input_args=(-ss "$skip")
+  elif python3 -c "exit(0 if $dub_offset > 0.001 else 1)"; then
+    # 正偏移：配音整体延后，用 adelay 滤镜整体延迟
+    local delay_ms=$(python3 -c "print(int($dub_offset * 1000))")
+    audio_filter_args=(-af "adelay=${delay_ms}|${delay_ms}")
+
+    # 正偏移会让"配音总时长"变成"原配音时长 + 偏移"，如果这个值超过了录像本身
+    # 的时长，直接 -shortest 会把超出部分的配音截掉——配音说到一半突然没声，
+    # 而不是报错。用 tpad 冻结画面最后一帧，把画面垫长到能装下完整配音，
+    # 不依赖 -shortest 兜底截断。
+    local video_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$rec")
+    local dub_dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$dub")
+    local needed=$(python3 -c "print($dub_dur + $dub_offset)")
+    if python3 -c "exit(0 if $needed > $video_dur else 1)"; then
+      local pad=$(python3 -c "print(round($needed - $video_dur + 0.3, 2))")
+      pad_filter=",tpad=stop_mode=clone:stop_duration=${pad}"
+    fi
+  fi
+
+  ffmpeg -i "$rec" "${dub_input_args[@]}" -i "$dub" \
+    -c:v h264_videotoolbox -b:v 5M -r 30 \
+    -vf "scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2:color=black${pad_filter}" \
+    -pix_fmt yuv420p -c:a aac -ar 48000 -ac 2 \
+    -map 0:v:0 -map 1:a:0 "${audio_filter_args[@]}" -shortest "$out" -y
+}
 ```
 
-## 8.9 本章产物
+这段代码里"正偏移会导致配音被截断"是一个真实踩过的坑：`dub_offset` 调大之后配合较短的录像，`-shortest` 会悄悄吃掉最后几句配音而不报任何错误——加 `tpad` 冻结最后一帧垫时长，是唯一可靠的修复方式，比事后靠人工听感发现"最后一句没声音"要主动得多。
 
-按顺序执行 8.2 → 8.3 → 8.4 → 8.5 → （可选 8.6）→ 8.7，最终在 `output/<feature-id>.mp4` 得到一条：分辨率/帧率统一、配音与画面精确对齐、字幕烧录或封装完成、响度归一化、支持网页快速播放的成片。
+## 8.4 封面、正文、封底拼接
 
-下一章把 03～08 章的所有模块，用一个编排器串成"一条命令跑完整个流程"。
+正文视频（8.3 节产出）只是成片的一部分。完整的合成还要按需拼接标题封面（可以是一张静态图，也可以用 07 章的方法现场生成一张带标题文字的卡片）和封底：
+
+```bash
+compose_final() {
+  local content="$1" out="$2"
+  local parts=()
+
+  # 1. 标题封面（可选）
+  if [ -n "$title" ]; then
+    gen_title_card "$title" "$subtitle" "$cover_duration" "$tmp/cover.mp4"
+    parts+=("$tmp/cover.mp4")
+  fi
+
+  # 2. 正文
+  parts+=("$content")
+
+  # 3. 封底（可选，见8.5节为什么必须显式开启）
+  if [ "$outro_enabled" = "true" ]; then
+    gen_outro "$outro_asset" "$outro_duration" "$tmp/outro.mp4"
+    parts+=("$tmp/outro.mp4")
+  fi
+
+  # 4. 拼接：各片段编码参数已在生成阶段对齐，优先用 stream-copy 无损拼接，
+  #    速度极快；参数万一没对齐导致 stream-copy 失败，再回退到重新编码
+  printf "file '%s'\n" "${parts[@]}" > "$tmp/concat.txt"
+  if ! ffmpeg -f concat -safe 0 -i "$tmp/concat.txt" -c copy "$out" -y 2>/dev/null; then
+    ffmpeg -f concat -safe 0 -i "$tmp/concat.txt" -c:v libx264 -preset fast -crf 23 -c:a aac "$out" -y
+  fi
+
+  # 5. BGM（可选，见8.5节）
+  if [ -n "$bgm_asset" ]; then
+    ffmpeg -i "$out" -i "$bgm_asset" \
+      -filter_complex "[1:a]volume=${bgm_volume:-0.15}[bgm];[0:a][bgm]amix=inputs=2:duration=first" \
+      -c:v copy "$tmp/final.mp4" -y
+    mv "$tmp/final.mp4" "$out"
+  fi
+}
+```
+
+**"优先 stream-copy、失败才重新编码"**这个小细节值得留意：只要前面每一段素材（封面卡片、正文、封底）在生成时就统一了分辨率/帧率/像素格式/编码参数，`-c copy` 无损拼接几乎瞬间完成；只有素材来源不一致（比如封面是外部随手做的一张图，编码参数没对齐）时才需要重新编码兜底，这个顺序能让绝大多数场景下的合成速度快一个数量级。
+
+## 8.5 显式开关：BGM 和封底不能"自动探测到文件就启用"
+
+这是一条用真实事故换来的教训：如果系统设计成"资源目录里放了 `bgm.mp3` 就自动给所有视频混上背景音乐"，看似省心，实际上非常危险——**BGM 和封底会实打实地改变成片的听感/结构，不应该被一个文件是否存在这种隐式信号决定**。真实发生过的情况是：项目的公共资源目录里一直放着一个占位用的 `bgm.mp3`（或者一张占位黑图当 outro），某次自动探测逻辑的 bug 修好之后，所有历史视频重新合成时全部意外多出了一段没人要的背景音乐/黑屏封底。
+
+正确的设计原则是：**素材文件"存在"和"要不要用"必须是两个独立的信号**。配置里必须显式写 `bgm: true`（或者给出具体路径）才会真正启用，`bgm` 字段缺省或者显式设为 `false` 时，即使资源目录里确实有同名文件，也绝不自动套用：
+
+```python
+def resolve_asset(meta: dict, dir_: str, project_dir: str, key: str) -> str:
+    val = meta.get(key)
+    if val in (None, "None", "null", False, "false"):
+        return ""  # 显式禁用或从未设置 —— 不使用，即使文件存在
+    if isinstance(val, str):
+        return val  # 显式给了路径，直接用
+    # val 为 True：按约定文件名，先查 feature 目录，再查项目公共 resources 目录
+    for base in (dir_, f"{project_dir}/resources"):
+        for name in CONVENTION_NAMES[key]:
+            path = f"{base}/{name}"
+            if os.path.exists(path):
+                return path
+    return ""
+```
+
+这条经验同样适用于任何"约定优于配置"的自动探测设计——约定优于配置的前提是**用户明确选择了走约定路径**，而不是"文件恰好在那儿"就被系统当成了信号。
+
+## 8.6 字幕烧录：时间戳要跟着同一个偏移量一起平移
+
+字幕烧录本身用 ffmpeg 的 `subtitles` 滤镜（需要编译进 libass 支持）：
+
+```bash
+ffmpeg -i final.mp4 \
+  -vf "subtitles=subtitles.srt:force_style='FontName=PingFang SC,FontSize=44,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,MarginV=45'" \
+  -c:a copy final-with-subs.mp4
+```
+
+容易被漏掉的一点是：8.3 节的 `dub_offset` 真实挪动了配音在时间轴上的位置，8.4 节的标题封面也让正文整体后移了 `cover_duration` 秒——**字幕的时间戳必须跟着同样的方向、同样的量级一起平移，否则配音已经提前/延后了，字幕却还对着画面原本（未偏移）的节奏，两者会对不上**。这是配音偏移功能上线后必须同步处理的一环，很容易在第一版实现里漏掉：
+
+```python
+def shift_srt(srt_path: str, shift_sec: float, out_path: str) -> None:
+    """把字幕的每个时间戳整体平移 shift_sec 秒，正数延后、负数提前。"""
+    content = open(srt_path).read()
+
+    def shift_match(m):
+        return "".join(shift_timestamp(t, shift_sec) for t in [m.group(0)])
+
+    pattern = r"\d{2}:\d{2}:\d{2},\d{3}"
+    return open(out_path, "w").write(re.sub(pattern, lambda m: shift_timestamp(m.group(0), shift_sec), content))
+```
+
+带封面的版本和不带封面的版本，总偏移量不一样（前者要多算上 `cover_duration`），实践中建议两个版本分别烧录，而不是共用一份偏移后的字幕文件。同时建议保留一份"不带封面、不烧字幕"的纯净版本（画面+配音），方便后续需要二次剪辑或者只要正文片段时直接取用，不用从带封面的成片里裁。
+
+## 8.7 缩略图：把第 0 帧内嵌为封面贴图
+
+一个容易被忽略、但影响"看起来专不专业"的细节：视频文件在 Finder / 大多数播放器里显示的默认缩略图，通常是从视频**中段**随机抽的一帧，不是第 0 帧——即使第 0 帧就是精心设计的标题封面，也不代表播放器会拿它当缩略图用。解决办法是把第 0 帧显式提取出来，作为"专辑封面"同款机制（`attached_pic`）内嵌进视频容器：
+
+```bash
+ffmpeg -i final.mp4 -vframes 1 -f image2 poster.png -y
+ffmpeg -i final.mp4 -i poster.png -map 0 -map 1 -c copy \
+  -c:v:1 png -disposition:v:1 attached_pic with_poster.mp4 -y
+```
+
+这样不管播放器内部怎么选缩略图逻辑、也不管观众有没有拖动过播放进度，Finder / 大多数播放器都会稳定显示这张内嵌的封面图作为缩略图。这是一个几行代码就能解决、但如果不知道这个机制会以为"没办法"的细节。
+
+## 8.8 小结
+
+本章的核心不是 ffmpeg 参数本身（这些命令查文档都能查到），而是四条来自真实使用中的经验：起始空档要在录制和合成两处各裁一刀、正偏移必须配合定格垫时长防止配音被截断、BGM/封底类会改变成片结构的素材必须显式开关而不能靠文件探测、字幕的时间戳必须和配音偏移保持数学上的一致。下一章把本章和前面几章的每个步骤，串成一套可以按需单独重跑的命令流程。
