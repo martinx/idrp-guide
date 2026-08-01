@@ -108,6 +108,37 @@ def build_sidebar(chapters_meta) -> str:
     return f'<nav class="sidebar">{"".join(rows)}</nav>'
 
 
+FEATURES = [
+    ("无人值守录制引擎", "ready/go 握手信号杜绝录到不该出现的画面、多屏环境自动探测录制设备、浏览器换皮去掉测试工具身份", "ch-05"),
+    ("字幕双来源判定", "优先用自动化脚本自带的时间点文本（最准），没有就用本地语音识别（Whisper/SenseVoice）转写兜底", "ch-06"),
+    ("自然语速配音", "按字幕分段生成配音，不做时长强制拉伸，用累计时间戳自然吸收每句的细微误差", "ch-06"),
+    ("多音字修复表", "一次维护「问题词→安全替换词」，比如「命令行工具」读错音，改一次对全部功能点视频生效", "ch-06"),
+    ("配音全局偏移", "一个 dub_offset 就能整体微调配音快慢，配合 tpad 兜底，正偏移也不会把配音截断", "ch-08"),
+    ("多语言一键翻译", "DeepSeek 批量翻译整份字幕，操作录制完全不用为了出英文版重录第二遍", "ch-06"),
+    ("文件即状态的编排", "没有数据库、没有状态机，几个约定命名的文件就是整条流水线的进度，任何一步都能单独重跑", "ch-09"),
+    ("meta.json 三级配置", "内置默认 → 项目级 → 功能级层层覆盖，团队规范改一处，全部功能点视频统一生效", "ch-09"),
+    ("AI 零审阅生成脚本", "record.spec.js 默认由 AI 直接产出，人工 codegen 只是 AI 猜不准页面结构时的兜底路径", "ch-03"),
+    ("AI 自愈调试循环", "冒烟测试报错直接交给 AI 分析、修复选择器、重新验证，人不用打开控制台排查", "ch-17"),
+    ("AI 自动化质检", "抽帧 + 多模态模型自动比对防泄露清单，产出审片报告，人只看标红的风险点", "ch-19"),
+    ("防泄露检查清单", "10 类真实翻车场景（菜单栏组件、终端历史、访问限制页返回200……）总结成可执行清单", "ch-10"),
+]
+
+
+def build_features() -> str:
+    items = []
+    for title, desc, anchor in FEATURES:
+        items.append(f"""
+        <a class="feature-item" href="#{anchor}">
+          <div class="fi-title">{title}</div>
+          <div class="fi-desc">{desc}</div>
+        </a>
+        """)
+    return f"""
+    <div class="features-heading">全书覆盖的能力</div>
+    <div class="features-grid">{''.join(items)}</div>
+    """
+
+
 def build_hero(chapters_meta) -> str:
     cards = []
     for part in PARTS:
@@ -128,9 +159,11 @@ def build_hero(chapters_meta) -> str:
       <h1>{BOOK_TITLE}：{BOOK_SUBTITLE}</h1>
       <p class="subtitle">一份从"一台干净的机器"出发的完整教程：人只走一遍真实操作路径，
       AI 把它整理成可重放的脚本、写好解说文案、生成配音、拼好成片；改一个字不用重录，
-      字幕改完几十秒出新版本；一个功能点定型之后，重新录制也是全自动、无人值守的。</p>
-      <div class="meta">{AUTHOR} · {PUBLISH_DATE} · 全书 21 章一次看完，点卡片直接跳转</div>
+      字幕改完几十秒出新版本；一个功能点定型之后，重新录制也是全自动、无人值守的。
+      一条视频从发起到成稿真实耗时约 15～30 分钟，人工唯一不可省略的环节是最后的审片。</p>
+      <div class="meta">{AUTHOR} · {PUBLISH_DATE} · 全书 21 章一次看完，点卡片/条目直接跳转</div>
     </div>
+    {build_features()}
     <div class="landing-grid">{''.join(cards)}</div>
     <div class="landing-divider"></div>
     """

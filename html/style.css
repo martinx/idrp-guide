@@ -186,6 +186,53 @@ body {
   .landing-grid { grid-template-columns: 1fr; }
 }
 
+/* ---------------- 能力清单网格 ---------------- */
+.features-heading {
+  font-family: var(--font-heading);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-lighter);
+  margin: 8px 0 14px;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 40px;
+}
+.feature-item {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.15s, transform 0.15s;
+}
+.feature-item:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.feature-item .fi-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 12.5px;
+  color: #221f18;
+  margin-bottom: 4px;
+}
+.feature-item .fi-desc {
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--text-light);
+  line-height: 1.55;
+}
+@media (max-width: 700px) {
+  .features-grid { grid-template-columns: 1fr; }
+}
+
 .part-divider {
   margin: 90px 0 40px;
   padding-top: 8px;
