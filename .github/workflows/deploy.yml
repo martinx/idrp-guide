@@ -1,4 +1,4 @@
-name: Deploy MkDocs site to Pages
+name: Deploy HTML book to Pages
 
 on:
   push:
@@ -25,14 +25,16 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install markdown pymdown-extensions pygments
 
-      - name: Build site
-        run: mkdocs build --strict
+      - name: Build single-page HTML book
+        run: |
+          cd html
+          python3 build_html.py
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: html/output
 
   deploy:
     environment:
