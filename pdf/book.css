@@ -27,7 +27,7 @@
   --fs-h2: 12.5pt;      /* 正文里的二级标题 */
   --fs-h3: 10.5pt;      /* 正文里的三级标题 */
 
-  --fs-code-block: 8.3pt;
+  --fs-code-block: 7.6pt;
   --lh-code-block: 1.5;
   --fs-table: 8.5pt;
 
@@ -111,7 +111,11 @@ h1, h2, h3, h4 {
   line-height: 1.35;
 }
 
-p { margin: 0 0 0.85em; text-align: justify; }
+/* 左对齐而不是两端对齐（justify）：WeasyPrint 不支持中文该用的
+   text-justify: inter-character（按字符分配空隙），只会退化成按"单词"分配空隙，
+   一遇到中文里嵌的数字/英文（"05 章"、"Playwright"）就会拉出大片异常空格。
+   左对齐完全避开这个问题，也是不少中文印刷书实际采用的方式。 */
+p { margin: 0 0 0.85em; text-align: left; }
 ul, ol { margin: 0 0 0.85em; padding-left: 1.4em; }
 li { margin-bottom: 0.35em; }
 strong { font-weight: 700; }

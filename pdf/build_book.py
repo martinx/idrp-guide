@@ -145,13 +145,13 @@ COVER_SVG = """
   </g>
 
   <!-- 项目三要素：录制/播放、配音波形、自动化代码 -->
-  <g transform="translate(30,180)">
+  <g transform="translate(38,180)">
     <circle cx="30" cy="28" r="27" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.85"/>
     <circle cx="30" cy="28" r="20" fill="#fbbf24" opacity="0.22"/>
     <polygon points="22,15 22,41 44,28" fill="#fbbf24"/>
   </g>
 
-  <g transform="translate(140,182)" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.92">
+  <g transform="translate(148,182)" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.92">
     <line x1="0"  y1="18" x2="0"  y2="34"/>
     <line x1="12" y1="8"  x2="12" y2="44"/>
     <line x1="24" y1="0"  x2="24" y2="52"/>
@@ -159,7 +159,7 @@ COVER_SVG = """
     <line x1="48" y1="20" x2="48" y2="32"/>
   </g>
 
-  <text x="245" y="222" font-family="Menlo, monospace" font-size="30" font-weight="700" fill="#ffffff">&lt;/&gt;</text>
+  <text x="253" y="222" font-family="Menlo, monospace" font-size="30" font-weight="700" fill="#ffffff">&lt;/&gt;</text>
 </svg>
 """.strip()
 
@@ -185,7 +185,7 @@ def build_cover() -> str:
         <div class="cover-kicker">Intent-Driven Recording</div>
         <div class="cover-title">{BOOK_TITLE}</div>
         <div class="cover-subtitle">{BOOK_SUBTITLE}</div>
-        <div style="margin-top:0.4in;">{COVER_SVG}</div>
+        <div style="margin-top:0.75in; text-align:center;">{COVER_SVG}</div>
       </div>
       <div class="cover-footer">
         <span class="author">{AUTHOR}</span>
