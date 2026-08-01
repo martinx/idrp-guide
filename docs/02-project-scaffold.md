@@ -34,7 +34,7 @@ idrp/                              # Intent-Driven Recording Pipeline 项目根�
 │   │   └── audio-duration.ts
 │   ├── cover/                     # 07 章：封面生成
 │   │   ├── template.html
-│   │   └── render-cover.ts
+│   │   └── (封面用 ImageMagick 直接生成，见07章，这里不需要额外的渲染脚本)
 │   ├── mix/                       # 08 章：ffmpeg 合成
 │   │   ├── concat.ts
 │   │   ├── subtitle.ts
@@ -61,7 +61,7 @@ idrp/                              # Intent-Driven Recording Pipeline 项目根�
 ## 2.2 为什么这样分层
 
 - `specs/` 与 `src/` 分离：Feature Spec 是"数据"，随时间不断新增；`src/` 是"代码"，相对稳定。这样产品/运营也能直接编辑 `specs/*.yaml` 而不用碰代码。
-- `config/rule.yaml` 承担"全局规范"的角色：分辨率、码率、字体路径、品牌色、语速、每步最短停留时间等，一处修改，全部功能点视频统一生效，避免不同人录制风格不一致。
+- 项目级 `meta.json`（09 章 9.4 节的三级合并）承担"全局规范"的角色：分辨率、字体、发音人、品牌色等，一处修改，全部功能点视频统一生效，避免不同人录制风格不一致。
 - `work/` 与 `output/` 分离：`work/` 是可随时清空重跑的中间产物，`output/` 才是交付物，防止误删成片。
 - 每个能力模块（codegen/recorder/dub/cover/mix）单独成目录，彼此只通过明确的输入输出文件/接口交互，方便单独测试、替换实现（比如把 TTS 从 edge-tts 换成 Azure，只改 `dub/` 目录内部）。
 

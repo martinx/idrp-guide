@@ -37,7 +37,7 @@
 | TTS 供应商适配层 | `src/dub/tts-provider.ts`、`tts-azure.ts`、`tts-edge.ts`、`tts-say.ts` |
 | 音频时长测量与节奏计算 | `src/dub/audio-duration.ts`、`pacing.ts` |
 | 响度归一化 | `src/dub/normalize.ts` |
-| 封面模板与渲染 | `src/cover/template.html`、`render-cover.ts` |
+| 封面生成 | `gen_title_card_png`/`gen_title_card`（ImageMagick 画图 + ffmpeg 转视频，见07章） |
 | 封面转视频片段 | `src/cover/cover-to-clip.ts` |
 | 分段规范化 | `src/mix/normalize-segment.ts` |
 | 视频音频贴合 | `src/mix/attach-audio.ts` |
