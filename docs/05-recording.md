@@ -18,8 +18,10 @@
 
 ## 5.2 路线一实现：Playwright recordVideo
 
+这条路线只用于 4.6 节的无头冒烟检查，不产出正式成片，所以不需要挂进 `lib/` 那套 bash 编排里，写成一段独立的 Playwright 辅助脚本即可：
+
 ```typescript
-// src/recorder/browser-recorder.ts
+// smoke/browser-recorder.ts（仅供无头冒烟检查使用，与 lib/ 下的正式编排脚本无关）
 import { chromium, Browser, BrowserContext, Page } from "playwright";
 import path from "path";
 
@@ -129,57 +131,35 @@ ffmpeg -f x11grab -video_size 1440x900 -framerate 30 -i :99.0 \
 
 - Xvfb 环境下真实鼠标指针默认不显示，需要额外用 `unclutter -root &` 保证指针不因静止而被系统隐藏，或者用合成的方式（比如驱动一个真实的 `xdotool mousemove` 来源）保证光标可见——这是 Linux 路线二相比 macOS 更繁琐的地方，如果条件允许优先在 macOS 上完成正式录制，Linux/Xvfb 方案留给 CI 里做"冒烟级"验证性质的录制（确认流程能跑通，不追求画面质感）。
 
-**Node.js 中对 ffmpeg 屏幕采集进程的封装**：
+**`lib/` 里对 ffmpeg 屏幕采集进程的封装**：
 
-```typescript
-// src/recorder/screen-recorder.ts
-import { spawn, ChildProcessWithoutNullStreams } from "child_process";
-import path from "path";
+```bash
+# lib/screen_recorder.sh
+start_screen_recording() {
+  local output_path="$1" fps="$2" device_index="$3" platform="$4"
 
-export interface ScreenRecordingHandle {
-  proc: ChildProcessWithoutNullStreams;
-  outputPath: string;
+  if [ "$platform" = "darwin" ]; then
+    ffmpeg -f avfoundation -capture_cursor 1 -capture_mouse_clicks 1 \
+      -framerate "$fps" -i "${device_index}:none" \
+      -vcodec libx264 -pix_fmt yuv420p -preset veryfast -crf 18 \
+      "$output_path" &
+  else
+    ffmpeg -f x11grab -video_size "$VIEWPORT_SIZE" \
+      -framerate "$fps" -i "$device_index" \
+      -vcodec libx264 -pix_fmt yuv420p -preset veryfast -crf 18 \
+      "$output_path" &
+  fi
+  echo $!  # 返回 ffmpeg 进程号，供 stop_screen_recording 使用
 }
 
-export function startScreenRecording(opts: {
-  outputPath: string;
-  fps: number;
-  viewport: { width: number; height: number };
-  deviceIndex: string; // macOS: avfoundation 设备索引; Linux: 传 ":99.0"
-  platform: "darwin" | "linux";
-}): ScreenRecordingHandle {
-  const args =
-    opts.platform === "darwin"
-      ? [
-          "-f", "avfoundation", "-capture_cursor", "1", "-capture_mouse_clicks", "1",
-          "-framerate", String(opts.fps), "-i", `${opts.deviceIndex}:none`,
-          "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "18",
-          opts.outputPath,
-        ]
-      : [
-          "-f", "x11grab",
-          "-video_size", `${opts.viewport.width}x${opts.viewport.height}`,
-          "-framerate", String(opts.fps), "-i", opts.deviceIndex,
-          "-vcodec", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "18",
-          opts.outputPath,
-        ];
-
-  const proc = spawn("ffmpeg", args);
-  return { proc, outputPath: opts.outputPath };
-}
-
-export async function stopScreenRecording(handle: ScreenRecordingHandle): Promise<string> {
-  return new Promise((resolve, reject) => {
-    handle.proc.once("exit", (code) => {
-      // ffmpeg 收到 SIGINT 后正常收尾退出码通常是 255，属于预期行为，不视为失败
-      resolve(handle.outputPath);
-    });
-    handle.proc.stdin.write("q"); // 向 ffmpeg 发送 'q' 触发优雅停止，比 SIGINT 更可靠地写完文件尾
-  });
+stop_screen_recording() {
+  local ffmpeg_pid="$1"
+  kill "$ffmpeg_pid" 2>/dev/null || true
+  wait "$ffmpeg_pid" 2>/dev/null || true  # 等它把文件尾写完整，不要直接丢下不管
 }
 ```
 
-用 `stdin` 写入 `"q"` 是 ffmpeg 官方推荐的优雅停止方式（等价于交互式运行时按 q 键），比直接 kill 进程更能保证输出文件的完整性。
+停止时用 `kill` 发信号给 ffmpeg 进程、再 `wait` 它退出，而不是直接杀掉不管——让 ffmpeg 有机会把文件尾（moov atom 等索引信息）写完整，避免产出无法播放的损坏文件。
 
 ## 5.4 混合场景：浏览器和终端切换，不需要特殊处理
 
@@ -219,26 +199,26 @@ feature-07-export-report/recording.mov
 3. ffmpeg 启动后需要一小段时间才能稳定写帧（通常一秒左右），编排逻辑等待这个稳定期过后，写一个 `go` 标记文件。
 4. 自动化脚本轮询等到 `go` 标记出现，才开始执行真正的业务操作序列。
 
-```typescript
-// src/recorder/handshake.ts
-import fs from "fs";
-
-export function writeFlag(path: string): void {
-  fs.writeFileSync(path, String(Date.now()));
+```bash
+# lib/handshake.sh
+write_flag() {
+  echo "$(date +%s)" > "$1"
 }
 
-export async function waitForFlag(path: string, timeoutMs = 60000): Promise<void> {
-  const start = Date.now();
-  while (!fs.existsSync(path)) {
-    if (Date.now() - start > timeoutMs) {
-      throw new Error(`等待信号文件超时: ${path}`);
-    }
-    await new Promise((r) => setTimeout(r, 200));
-  }
+wait_for_flag() {
+  local flag_path="$1" timeout_s="${2:-60}" waited=0
+  while [ ! -f "$flag_path" ]; do
+    sleep 0.2
+    waited=$(echo "$waited + 0.2" | bc)
+    if [ "$(echo "$waited > $timeout_s" | bc)" = "1" ]; then
+      echo "等待信号文件超时: $flag_path" >&2
+      return 1
+    fi
+  done
 }
 ```
 
-编排器里的调用顺序变成：自动化脚本准备就绪 → `writeFlag(readyFlagPath)` → 主流程 `waitForFlag(readyFlagPath)` 后启动 ffmpeg → 等待约1秒让编码稳定 → `writeFlag(goFlagPath)` → 自动化脚本 `waitForFlag(goFlagPath)` 后才开始操作。这样"录屏开始"和"操作开始"之间不再依赖猜测的固定延时，而是由双方各自确认"我这边真的准备好了"来驱动，从工程上彻底消除了 5.3 节实现里潜在的时序空档。
+`record.spec.js`（Playwright 侧）和 `video-toolkit.sh`（编排器侧）各自轮询这两个标记文件，调用顺序变成：自动化脚本准备就绪 → 写 `ready` 标记 → 编排器等到 `ready` 出现后启动 ffmpeg → 等待约1秒让编码稳定 → 写 `go` 标记 → 自动化脚本等到 `go` 出现后才开始操作。这样"录屏开始"和"操作开始"之间不再依赖猜测的固定延时，而是由双方各自确认"我这边真的准备好了"来驱动，从工程上彻底消除了 5.3 节实现里潜在的时序空档。
 
 **问题二：多显示器环境下，录屏设备序号不是稳定的**。macOS 的 `avfoundation` 给每块屏幕分配的采集设备序号，会在外接显示器插拔后重新编号——如果编排器把序号硬编码写死，接了外接屏之后完全可能录错屏幕（把外接屏内容录了进去，而实际操作发生在内置屏上，或者反过来）。稳妥的做法是每次录制前动态探测：枚举所有 `avfoundation` 采集设备，用系统显示器信息（分辨率、是否为主屏）逐一比对，找出真正对应内置/主屏的那个序号，而不是假设序号永远不变。这也是本书前言部分提到的"接外接屏后录制设备错位"这类问题的根本解法——探测一次、每次录制都重新探测，而不是配置一次就固定下来。
 

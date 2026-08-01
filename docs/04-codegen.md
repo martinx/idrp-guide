@@ -40,7 +40,7 @@ Codegen 生成的原始代码是"能跑但不干净"的，直接拿去录制正�
 
 **问题二：硬编码的绝对时间等待**，比如 `await page.waitForTimeout(1500)`。这类等待在真实网络环境下可能不够（页面卡顿导致按钮还没出现就点了）也可能过多（白白拉长录制时间且不受配音节奏控制）。应该统一替换成基于状态的等待：
 
-```typescript
+```javascript
 // 清洗前（codegen 原始产出）
 await page.click('#export-btn');
 await page.waitForTimeout(1500);

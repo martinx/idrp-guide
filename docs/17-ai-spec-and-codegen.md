@@ -69,45 +69,33 @@
 
 把这个循环接入 09 章的编排器，作为 Preflight 失败之后的自动响应，而不是让 Preflight 直接报错中止：
 
-```typescript
-// src/orchestrator/self-heal.ts
-import { execFile } from "child_process";
-import { promisify } from "util";
-import fs from "fs";
+```bash
+# lib/self_heal.sh
+MAX_RETRIES=4
 
-const execFileAsync = promisify(execFile);
-const MAX_RETRIES = 4;
+self_heal_codegen_step() {
+  local script_path="$1"
+  local error_log="$2"
+  local attempt=1
 
-export async function selfHealCodegenStep(
-  stepScriptPath: string,
-  errorLog: string
-): Promise<boolean> {
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const scriptContent = fs.readFileSync(stepScriptPath, "utf-8");
-
-    // 调用 AI agent CLI（以 claude 命令行为例），把报错和脚本内容作为上下文传入，
-    // 要求它直接修改文件后返回；具体 CLI 调用方式取决于你使用的 agent 工具
-    const prompt = `
-以下 Playwright 脚本在冒烟测试中报错，请分析原因并直接修改文件。
-文件路径：${stepScriptPath}
+  while [ "$attempt" -le "$MAX_RETRIES" ]; do
+    # 调用 AI agent CLI（以 claude 命令行为例），把报错和脚本路径作为上下文传入，
+    # 要求它直接修改文件后返回；具体 CLI 调用方式取决于你使用的 agent 工具
+    local prompt="以下 Playwright 脚本在冒烟测试中报错，请分析原因并直接修改文件。
+文件路径：${script_path}
 报错信息：
-${errorLog}
-当前脚本内容：
-${scriptContent}
-只修改必要的部分（通常是选择器或等待条件），不要重写整个文件结构。`;
+${error_log}
+只修改必要的部分（通常是选择器或等待条件），不要重写整个文件结构。"
 
-    await execFileAsync("claude", ["-p", prompt, "--allowedTools", "Edit,Read"]);
+    claude -p "$prompt" --allowedTools "Edit,Read"
 
-    // 重新跑一次冒烟测试，通过则返回，否则带着新的报错信息进入下一轮
-    try {
-      await execFileAsync("ts-node", [stepScriptPath.replace(".ts", ".smoke.ts")]);
-      return true;
-    } catch (e: any) {
-      errorLog = e.stderr ?? String(e);
-      continue;
-    }
-  }
-  return false; // 超过重试次数，交回人工
+    # 重新跑一次冒烟测试，通过则返回，否则带着新的报错信息进入下一轮
+    if error_log=$(node "$script_path" 2>&1); then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1  # 超过重试次数，交回人工
 }
 ```
 
