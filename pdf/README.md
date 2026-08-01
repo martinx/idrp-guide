@@ -6,12 +6,20 @@
 
 ```bash
 brew install weasyprint          # HTML/CSS 转印刷级 PDF 的渲染引擎
+brew install --cask font-noto-serif-cjk-sc font-noto-sans-cjk-sc   # 思源宋体/思源黑体
 cd idrp-guide
 source .venv/bin/activate        # 复用仓库里已有的 Python 虚拟环境
 pip install markdown pymdown-extensions pygments
 ```
 
 只需要做一次；`.venv` 已经在仓库里（跟 `mkdocs serve` 用的是同一个），不需要单独建。
+
+**字体选择说明**：正文/标题用的是思源宋体/思源黑体（Noto Serif/Sans CJK SC），而不是 macOS
+自带的 Songti SC/PingFang SC——后者在 WeasyPrint 的渲染链路（Pango + Cairo + FreeType）下拿不到
+苹果 CoreText 的字体平滑技术，笔画会明显偏细、发毛；思源系列是 Adobe/Google 专门为跨平台数字
+排版设计的开源字体，微调（hinting）信息完整，这条渲染链路正是它的设计目标场景，效果稳定很多。
+如果没装这两个字体，`book.css` 里的 `--font-serif`/`--font-sans` 会自动回退到系统字体，能正常出图，
+只是观感会回到之前偏细的状态。
 
 ## 生成 PDF
 
