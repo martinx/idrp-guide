@@ -1,206 +1,210 @@
 /*
- * "Claude 风格"：暖白纸张背景 + 克制的赤陶橙点缀，干净排版，
- * 无渐变/无发光特效，卡片用细边框+浅阴影，安静、耐读、不抢内容风头。
+ * 视觉基调参照 aas-flowguard 技术文档：冷灰白底 + 白色卡片 + 克制的红色点缀，
+ * 大量留白、细边框、轻阴影，不用渐变/发光特效。左侧目录追求"稀疏、安静"，
+ * 不是密集的树状展开。
  */
 
 /* ---------- 亮色（默认） ---------- */
 [data-md-color-scheme="default"] {
-  --md-default-bg-color: #faf9f5;
-  --md-default-fg-color: #3d3929;
-  --md-default-fg-color--light: #6b6656;
-  --md-default-fg-color--lighter: #8a8572;
-  --md-default-fg-color--lightest: #e8e6dc;
+  --md-default-bg-color: #f6f7f9;
+  --md-default-fg-color: #181b23;
+  --md-default-fg-color--light: #5c6273;
+  --md-default-fg-color--lighter: #9aa0ae;
+  --md-default-fg-color--lightest: #e6e8ee;
 
-  --md-primary-fg-color: #faf9f5;
-  --md-primary-bg-color: #3d3929;
+  --md-primary-fg-color: #f6f7f9;
+  --md-primary-bg-color: #181b23;
 
-  --md-accent-fg-color: #c96442;
-  --md-accent-fg-color--transparent: #c9644226;
+  --md-accent-fg-color: #d42820;
+  --md-accent-fg-color--transparent: #d4282020;
 
-  --md-typeset-a-color: #c96442;
+  --md-typeset-a-color: #d42820;
 
-  --md-code-bg-color: #f0eee6;
-  --md-code-fg-color: #3d3929;
+  --md-code-bg-color: #f2f0eb;
+  --md-code-fg-color: #181b23;
 
-  --brand-accent: #c96442;
-  --card-border: rgba(61, 57, 41, 0.12);
-  --card-shadow: 0 1px 2px rgba(61, 57, 41, 0.04), 0 2px 8px rgba(61, 57, 41, 0.05);
+  --surface: #ffffff;
+  --surface-2: #f0f1f4;
+  --border: #e6e8ee;
+  --border-soft: #eef0f4;
+  --accent-ink: #a31f19;
+  --shadow-sm: 0 1px 2px rgba(20, 20, 24, 0.04);
+  --shadow-md: 0 6px 20px rgba(20, 20, 24, 0.06);
 }
 
 /* ---------- 暗色 ---------- */
 [data-md-color-scheme="slate"] {
-  --md-default-bg-color: #1f1e1c;
-  --md-default-fg-color: #e8e6dc;
-  --md-default-fg-color--light: #c2beac;
-  --md-default-fg-color--lighter: #948f7c;
-  --md-default-fg-color--lightest: #35332d;
+  --md-default-bg-color: #14161b;
+  --md-default-fg-color: #edeef2;
+  --md-default-fg-color--light: #a6acbc;
+  --md-default-fg-color--lighter: #6d7386;
+  --md-default-fg-color--lightest: #2a2e38;
 
-  --md-primary-fg-color: #1f1e1c;
-  --md-primary-bg-color: #e8e6dc;
+  --md-primary-fg-color: #14161b;
+  --md-primary-bg-color: #edeef2;
 
-  --md-accent-fg-color: #e08a67;
-  --md-accent-fg-color--transparent: #e08a6726;
+  --md-accent-fg-color: #ff7a68;
+  --md-accent-fg-color--transparent: #ff7a6820;
 
-  --md-typeset-a-color: #e08a67;
+  --md-typeset-a-color: #ff7a68;
 
-  --md-code-bg-color: #2a2824;
-  --md-code-fg-color: #e8e6dc;
+  --md-code-bg-color: #22262f;
+  --md-code-fg-color: #edeef2;
 
-  --brand-accent: #e08a67;
-  --card-border: rgba(232, 230, 220, 0.12);
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.18);
+  --surface: #1b1e25;
+  --surface-2: #20232b;
+  --border: #2a2e38;
+  --border-soft: #252932;
+  --accent-ink: #ffb3a6;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
-/* 顶部导航条：和正文同色系，纯色不做渐变，安静低调 */
+/* 顶部导航条：和正文同底色，只用细分隔线，不做渐变 */
 .md-header {
   background-color: var(--md-default-bg-color);
   color: var(--md-default-fg-color);
-  box-shadow: 0 1px 0 var(--card-border);
+  box-shadow: 0 1px 0 var(--border);
 }
-
 .md-header__title,
 .md-header__button,
 .md-header__topic {
   color: var(--md-default-fg-color) !important;
 }
-
 .md-tabs {
   background-color: var(--md-default-bg-color);
+  border-bottom: 1px solid var(--border);
 }
 
-/* 左侧栏当前项：细的赤陶色左边条，不做发光效果 */
-.md-nav__link--active,
-.md-nav__link:focus,
-.md-nav__link:hover {
-  color: var(--brand-accent);
-}
-
-.md-nav__item .md-nav__link--active {
-  position: relative;
-  font-weight: 600;
-}
-
-.md-nav__item .md-nav__link--active::before {
-  content: "";
-  position: absolute;
-  left: -12px;
-  top: 2px;
-  bottom: 2px;
-  width: 2px;
-  background: var(--brand-accent);
-  border-radius: 2px;
-}
-
-/* ---------- 中文字体：干净耐读，不用 Google Fonts ---------- */
+/* ---------- 字体：干净耐读，不用 Google Fonts ---------- */
 :root {
   --md-text-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
     "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   --md-code-font: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 }
-
 .md-typeset {
   font-family: var(--md-text-font);
   line-height: 1.75;
-  font-size: 0.72rem;
 }
-
 .md-typeset h1,
 .md-typeset h2,
 .md-typeset h3 {
-  font-weight: 650;
-  letter-spacing: 0.005em;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   color: var(--md-default-fg-color);
 }
-
 .md-typeset h1 {
-  border-bottom: 1px solid var(--card-border);
-  padding-bottom: 0.4em;
+  font-size: 1.9rem;
 }
 
-.md-typeset h2 {
-  margin-top: 2em;
+/* ---------- 左侧目录：稀疏、安静，不做密集树状展开 ---------- */
+.md-nav {
+  font-size: 0.72rem;
+}
+.md-nav__title {
+  color: var(--md-default-fg-color--lighter);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* 顶层分组（第一/二/三/四部分）：只作为分组标签，不可点击态更明显区分层级 */
+.md-nav__item--section > .md-nav__link {
+  font-weight: 700;
+  color: var(--md-default-fg-color);
+  margin-top: 0.6em;
+}
+.md-nav__link {
+  padding: 0.2em 0;
+  color: var(--md-default-fg-color--light);
+  border-left: 2px solid transparent;
+  padding-left: 0.6em;
+  transition: color 0.15s, border-color 0.15s;
+}
+.md-nav__link:hover {
+  color: var(--md-default-fg-color);
+  border-left-color: var(--md-default-fg-color--lighter);
+}
+.md-nav__link--active {
+  color: var(--md-accent-fg-color) !important;
+  font-weight: 600;
+  border-left-color: var(--md-accent-fg-color);
+}
+.md-nav__item {
+  margin: 0.15em 0;
 }
 
-/* ---------- 代码块：纸感卡片，细边框浅阴影，不做发光/渐变 ---------- */
+/* ---------- 代码块：白色/深色卡片，细边框，无发光/渐变 ---------- */
 .md-typeset .highlight {
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   background: var(--md-code-bg-color);
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border-soft);
 }
-
 .md-typeset .highlight > pre {
   margin: 0;
 }
-
 .md-typeset pre > code {
   font-size: 0.78rem;
   line-height: 1.7;
   color: var(--md-code-fg-color);
 }
-
 .md-typeset code {
-  border-radius: 4px;
-  padding: 0.1em 0.4em;
+  border-radius: 5px;
+  padding: 0.15em 0.4em;
 }
-
 .md-clipboard {
   color: var(--md-default-fg-color--lighter);
 }
-
 .md-clipboard:hover {
-  color: var(--brand-accent);
+  color: var(--md-accent-fg-color);
 }
-
 [data-md-color-scheme="default"] .md-typeset :not(pre) > code {
-  background-color: #f0eee6;
-  color: #b35538;
+  background-color: var(--md-code-bg-color);
+  color: var(--accent-ink);
 }
 [data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
-  background-color: #2a2824;
-  color: #e08a67;
+  background-color: var(--md-code-bg-color);
+  color: var(--accent-ink);
 }
 
-/* 提示框/详情框：细边框卡片，左侧一条赤陶色强调线 */
+/* ---------- 卡片化的提示框：白底细边框轻阴影，左侧一条强调线 ---------- */
 .md-typeset .admonition,
 .md-typeset details {
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--card-border);
-  border-left: 3px solid var(--brand-accent);
-  box-shadow: var(--card-shadow);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--md-accent-fg-color);
+  box-shadow: var(--shadow-sm);
 }
 
-/* 表格：细边框卡片 */
+/* ---------- 表格：白底卡片，细边框，表头浅灰 ---------- */
 .md-typeset table:not([class]) {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--card-border);
-  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
 }
-
 .md-typeset table:not([class]) th {
-  background: var(--md-code-bg-color);
-  font-weight: 600;
+  background: var(--surface-2);
+  color: var(--md-default-fg-color--light);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.md-typeset table:not([class]) tr:hover td {
+  background: var(--surface-2);
 }
 
-/* 链接：不做文字发光，只变色 + 细下划线 */
-.md-typeset a {
-  text-decoration-color: var(--md-accent-fg-color--transparent);
-}
-
+/* 链接：只变色，不做文字发光 */
 .md-typeset a:hover {
-  color: var(--brand-accent);
+  color: var(--md-accent-fg-color);
 }
 
-/* 搜索框：聚焦态用赤陶色细描边，不做发光 */
+/* 搜索框：聚焦态细描边 */
 .md-search__input:focus {
-  box-shadow: 0 0 0 1.5px var(--brand-accent);
-}
-
-/* 首页大标题：适度加大，视觉上像一本书的封面 */
-.md-typeset h1:first-child {
-  font-size: 1.9rem;
+  box-shadow: 0 0 0 1.5px var(--md-accent-fg-color);
 }

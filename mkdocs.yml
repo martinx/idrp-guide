@@ -13,13 +13,13 @@ theme:
   palette:
     - scheme: default
       primary: white
-      accent: deep orange
+      accent: red
       toggle:
         icon: material/weather-night
         name: 切换到深色模式
     - scheme: slate
       primary: black
-      accent: deep orange
+      accent: red
       toggle:
         icon: material/weather-sunny
         name: 切换到浅色模式
@@ -28,7 +28,7 @@ theme:
     - navigation.tracking
     - navigation.top
     - navigation.footer
-    - navigation.expand
+    - navigation.sections
     - navigation.indexes
     - toc.follow
     - search.suggest
@@ -60,27 +60,31 @@ plugins:
 
 nav:
   - 首页: index.md
-  - "00 前言与总体架构": 00-overview.md
-  - "01 环境准备": 01-environment-setup.md
-  - "02 项目脚手架与目录规范": 02-project-scaffold.md
-  - "03 意图驱动的 Feature Spec 设计": 03-feature-spec.md
-  - "04 浏览器自动化与 Codegen": 04-codegen.md
-  - "05 屏幕与浏览器录制": 05-recording.md
-  - "06 自动配音 Dub 流程": 06-dubbing.md
-  - "07 封面与素材生成": 07-cover-assets.md
-  - "08 音视频合成 Cover-Mix": 08-mixing.md
-  - "09 全流程编排器实现": 09-orchestrator.md
-  - "10 质量检查与防泄露清单": 10-quality-checklist.md
-  - "11 故障排查、性能优化与扩展": 11-troubleshooting.md
-  - "12 端到端实战演练": 12-walkthrough.md
-  - "13 常见问题 FAQ": 13-faq.md
-  - "14 自动化边界与 ROI 考量": 14-roi.md
-  - "15 术语表与延伸阅读": 15-glossary.md
-  - "16 AI 是真正的操作者": 16-ai-overview.md
-  - "17 用 AI 设计与调试 Spec/Codegen": 17-ai-spec-and-codegen.md
-  - "18 用 AI 生成解说文案与字幕": 18-ai-narration.md
-  - "19 用 AI 做自动化质检与防泄露检测": 19-ai-qa-leak-detection.md
-  - "20 实战案例重做：AI 主导工作流": 20-ai-walkthrough.md
+  - 第一部分 · 准备与基础:
+      - "00 前言与总体架构": 00-overview.md
+      - "01 环境准备": 01-environment-setup.md
+      - "02 项目脚手架与目录规范": 02-project-scaffold.md
+  - 第二部分 · 核心能力:
+      - "03 意图驱动的 Feature Spec 设计": 03-feature-spec.md
+      - "04 浏览器自动化与 Codegen": 04-codegen.md
+      - "05 屏幕与浏览器录制": 05-recording.md
+      - "06 自动配音 Dub 流程": 06-dubbing.md
+      - "07 封面与素材生成": 07-cover-assets.md
+      - "08 音视频合成 Cover-Mix": 08-mixing.md
+      - "09 全流程编排器实现": 09-orchestrator.md
+  - 第三部分 · 质量与运维:
+      - "10 质量检查与防泄露清单": 10-quality-checklist.md
+      - "11 故障排查、性能优化与扩展": 11-troubleshooting.md
+      - "12 端到端实战演练": 12-walkthrough.md
+      - "13 常见问题 FAQ": 13-faq.md
+      - "14 自动化边界与 ROI 考量": 14-roi.md
+      - "15 术语表与延伸阅读": 15-glossary.md
+  - 第四部分 · AI 协同实战:
+      - "16 AI 是真正的操作者": 16-ai-overview.md
+      - "17 用 AI 设计与调试 Spec/Codegen": 17-ai-spec-and-codegen.md
+      - "18 用 AI 生成解说文案与字幕": 18-ai-narration.md
+      - "19 用 AI 做自动化质检与防泄露检测": 19-ai-qa-leak-detection.md
+      - "20 实战案例重做：AI 主导工作流": 20-ai-walkthrough.md
 
 extra:
   social:
