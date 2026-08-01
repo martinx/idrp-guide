@@ -1,51 +1,72 @@
 # 意图驱动录制：AI 协同的自动化演示流水线
 
-> 一份从"一台干净的机器"出发的完整教程：只需要描述意图 + 少量 codegen，
-> 就能自动完成功能点演示视频的录制、配音、封面、合成全流程。
-
-## 这本书讲什么
-
-传统的功能演示视频制作是重复的人力劳动：手动操作、手动录屏、手动配音、手动剪辑，
-一旦功能有 UI 微调就要整条重来。本书从零开始，一步步搭建一套**意图驱动的自动化录制流水线**：
-
-- 人只需要提供"意图"——功能是什么、关键步骤是什么、每一步强调什么；
-- 用 Playwright Codegen 把一次手动操作录制成可重放脚本；
-- 按"录制优先"的顺序：先把操作按自然节奏录下来，再让字幕和配音去适配这段固定的时间轴；
-- 用 ffmpeg 自动完成封面、拼接、字幕、混音与导出。
+<p class="home-hero">
+一份从"一台干净的机器"出发的完整教程：人只走一遍真实操作路径，AI 把它整理成可重放的脚本、
+写好解说文案、生成配音、拼好成片；改一个字不用重录，字幕改完几十秒出新版本；
+一个功能点定型之后，重新录制也是全自动、无人值守的。
+</p>
 
 **更重要的是**：0～15 章讲的是这套系统需要具备的"机制"，16～20 章讲的是实践中这些机制
-**绝大部分是由 AI agent（如 Claude Code）执行的**——用例设计、选择器调试、解说文案撰写、
-录制后防泄露质检，几乎都不是人手工完成的，人类的角色收缩为提出意图、关键示范操作和最终把关。
-如果你只能读一部分，建议至少通读第 16 章，它会重新定义你对前面所有章节的理解方式。
+**绝大部分是由 AI agent（如 Claude Code）执行的**——脚本整理、解说文案撰写、
+录制后防泄露质检，几乎都不是人手工完成的，人类的角色收缩为走一遍真实操作、最终确认效果。
+如果你只能读一部分，建议至少通读第 00 章和第 16 章。
 
-全书包含完整可运行的 TypeScript / Bash / YAML 代码示例，配套原理讲解、
-实战案例走查、常见问题解答与 ROI 决策参考。
+<div class="home-grid" markdown>
 
-## 目录
+<div class="home-card" markdown>
+<span class="home-card-eyebrow">Part 1</span>
+### 准备与基础
+<p class="home-card-desc">环境怎么搭、项目怎么组织。</p>
 
-| 章节 | 内容 |
-|---|---|
-| [00 前言与总体架构](00-overview.md) | 设计哲学、总体架构图、技术选型一览 |
-| [01 环境准备](01-environment-setup.md) | 操作系统、Node.js/Python、Playwright、ffmpeg、字体、系统权限 |
-| [02 项目脚手架与目录规范](02-project-scaffold.md) | 仓库结构、命名规范、多环境隔离 |
-| [03 一个功能点由哪几份文件描述](03-feature-spec.md) | record.spec.js / timeline.json / meta.json 三份文件的职责划分 |
-| [04 浏览器自动化与 Codegen](04-codegen.md) | Codegen 原理、脚本清洗、选择器稳定性策略 |
-| [05 屏幕与浏览器录制](05-recording.md) | Playwright recordVideo vs 系统级录屏、终端录制 |
-| [06 录制之后：字幕来源与自然语速配音](06-dubbing.md) | 字幕来源判定、按字幕自然语速配音、多音字修复、多语言字幕翻译 |
-| [07 封面与素材生成](07-cover-assets.md) | HTML 模板截图生成封面、品牌规范 |
-| [08 音视频合成 Cover-Mix](08-mixing.md) | ffmpeg 拼接、混音、字幕烧录、导出规范 |
-| [09 全流程编排器实现](09-orchestrator.md) | 完整 TypeScript 编排器源码 |
-| [10 质量检查与防泄露清单](10-quality-checklist.md) | 录制前中后检查清单、敏感信息防范 |
-| [11 故障排查、性能优化与扩展](11-troubleshooting.md) | 常见故障、并行/缓存优化、CI 集成、多语言扩展 |
-| [12 端到端实战演练](12-walkthrough.md) | 完整案例走查与耗时统计 |
-| [13 常见问题 FAQ](13-faq.md) | 五大类高频问题解答 |
-| [14 自动化边界与 ROI 考量](14-roi.md) | 什么场景值得投入、量化 ROI 框架 |
-| [15 术语表与延伸阅读](15-glossary.md) | 术语表、代码模块速查、延伸学习 |
-| [16 AI 是真正的操作者](16-ai-overview.md) | 重新划分人机分工，把前15章定位为喂给 AI 的设计文档 |
-| [17 用 AI 设计与调试 Spec/Codegen](17-ai-spec-and-codegen.md) | 真实 prompt 模板、AI 自愈调试循环、AI 自主 codegen |
-| [18 用 AI 生成解说文案与字幕](18-ai-narration.md) | AI 从 Spec 直接产出全篇文案，人只做语气微调 |
-| [19 用 AI 做自动化质检与防泄露检测](19-ai-qa-leak-detection.md) | 抽帧+多模态模型自动比对检查清单，产出审片报告 |
-| [20 反过来看：不用 AI 要多久](20-ai-walkthrough.md) | 同一案例的反事实推演：完全不用 AI，耗时会是多少 |
+- [00 前言与总体架构](00-overview.md)
+- [01 环境准备](01-environment-setup.md)
+- [02 项目脚手架与目录规范](02-project-scaffold.md)
+
+</div>
+
+<div class="home-card" markdown>
+<span class="home-card-eyebrow">Part 2</span>
+### 核心能力
+<p class="home-card-desc">三份文件、录制、字幕配音、封面合成、命令行编排。</p>
+
+- [03 一个功能点由哪几份文件描述](03-feature-spec.md)
+- [04 浏览器自动化与 Codegen](04-codegen.md)
+- [05 屏幕与浏览器录制](05-recording.md)
+- [06 录制之后：字幕与自然语速配音](06-dubbing.md)
+- [07 封面与素材生成](07-cover-assets.md)
+- [08 合成成片：裁剪/混流/烧字幕](08-mixing.md)
+- [09 命令行编排](09-orchestrator.md)
+
+</div>
+
+<div class="home-card" markdown>
+<span class="home-card-eyebrow">Part 3</span>
+### 质量与运维
+<p class="home-card-desc">防泄露清单、故障排查、实战案例、值不值得做。</p>
+
+- [10 质量检查与防泄露清单](10-quality-checklist.md)
+- [11 故障排查、性能优化与扩展](11-troubleshooting.md)
+- [12 端到端实战演练](12-walkthrough.md)
+- [13 常见问题 FAQ](13-faq.md)
+- [14 自动化边界与 ROI 考量](14-roi.md)
+- [15 术语表与延伸阅读](15-glossary.md)
+
+</div>
+
+<div class="home-card" markdown>
+<span class="home-card-eyebrow">Part 4</span>
+### AI 协同实战
+<p class="home-card-desc">全书最终想分享的经验：这一切在真实团队里是怎么被 AI 承接执行的。</p>
+
+- [16 AI 是真正的操作者](16-ai-overview.md)
+- [17 用 AI 设计与调试 Spec/Codegen](17-ai-spec-and-codegen.md)
+- [18 用 AI 生成解说文案与字幕](18-ai-narration.md)
+- [19 用 AI 做自动化质检与防泄露检测](19-ai-qa-leak-detection.md)
+- [20 反过来看：不用 AI 要多久](20-ai-walkthrough.md)
+
+</div>
+
+</div>
 
 ## 如何使用
 

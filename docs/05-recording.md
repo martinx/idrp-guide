@@ -248,4 +248,57 @@ export async function waitForFlag(path: string, timeoutMs = 60000): Promise<void
 
 这四类问题共同的特点是：**它们都不是"功能实现"层面的问题，而是"长期无人值守运行的健壮性"层面的问题**。5.1～5.6 节的实现能让你完成第一条视频的录制；本节这四个细节，才是让这套录制能力真正达到"完全自动化、可以放心批量跑"的关键。
 
-下一章讲配音层：如何为每个步骤生成配音音频，并用音频时长反向驱动本章录制/等待的节奏。
+## 5.8 三个让录制画面更专业的实践细节
+
+**细节一：把自动化用的浏览器换一个"皮"**。Playwright 默认驱动的是它自己下载的 Chromium（进程名/菜单栏显示"Google Chrome for Testing"），直接拿去录制正式演示视频，任务栏和关于页面会露出这个开发测试用的身份，不够专业。做法是从 Playwright 的浏览器缓存目录里复制一份 Chromium，重命名可执行文件、改 `Info.plist` 里的 `CFBundleExecutable`/`CFBundleName`/`CFBundleDisplayName`，再重新做一次 ad-hoc 签名（改过身份信息后原签名会失效，必须重签，本地录制不需要开发者证书）：
+
+```bash
+CACHE_DIR="$HOME/Library/Caches/ms-playwright"
+SRC=$(find "$CACHE_DIR" -maxdepth 3 -iname "Google Chrome for Testing.app" -print -quit)
+DEST="./演示助手.app"
+NEW_NAME="演示助手"
+
+ditto "$SRC" "$DEST"
+mv "$DEST/Contents/MacOS/Google Chrome for Testing" "$DEST/Contents/MacOS/$NEW_NAME"
+plutil -replace CFBundleExecutable -string "$NEW_NAME" "$DEST/Contents/Info.plist"
+plutil -replace CFBundleName -string "$NEW_NAME" "$DEST/Contents/Info.plist"
+plutil -replace CFBundleDisplayName -string "$NEW_NAME" "$DEST/Contents/Info.plist"
+codesign --force --deep --sign - "$DEST"
+```
+
+之后在 `playwright.config.js` 里把 `executablePath` 指向这个改名后的 app，录制出来的画面里，Dock、菜单栏、`Cmd+Tab` 切换窗口时看到的都是自定义的名字，不会露出底层用的是 Playwright/Chromium。升级 Playwright 版本后 Chromium 会更新，重跑一遍这个脚本覆盖生成即可。
+
+**细节二：需要"双重视角"验证效果时，开两个标签页分别承担不同角色**。比如演示一个访问控制类的功能——一个标签页始终停留在管理后台（负责改配置），另一个专门的标签页用来模拟真实业务请求（验证配置是否生效），两者不要来回复用同一个标签页导航切换，而是各自固定角色：
+
+```javascript
+let verifyPage = null;
+async function ensureVerifyPage(context) {
+  if (verifyPage && !verifyPage.isClosed()) return verifyPage;
+  verifyPage = await context.newPage();
+  return verifyPage;
+}
+// 管理后台一直用 page，验证效果切到 verifyPage，互不干扰，画面切换也更容易让观众看懂
+// "这是两个不同的视角"，而不是同一个页面来回刷新
+```
+
+这样录出来的画面里，"改配置"和"看效果"是两个清晰分离的标签页，观众更容易理解因果关系，也避免了在同一个标签页里反复导航导致的画面跳动。
+
+**细节三：单个步骤操作失败不要让整条录制中断**。自动化脚本跑几分钟，中间某一步偶发性地找不到元素（网络慢、动画还没播完），如果直接抛异常中断，前面几分钟的录制就全部作废。更稳妥的做法是给每个操作步骤包一层容错，失败了记录日志、跳过这一步的具体操作，但仍然继续播放对应的解说、往下走：
+
+```javascript
+async function step(page, narration, action, holdMs) {
+  try {
+    await action();
+  } catch (e) {
+    console.log(`⚠️ 步骤异常，跳过具体操作: ${e.message.split("\n")[0]}`);
+  }
+  // 即使操作失败，解说和停留照常进行——录制不因单点故障整体作废，
+  // 顶多这一步画面效果不完美，人工审片时能发现，比整条重录成本低得多
+  narrate(narration);
+  await sleep(holdMs);
+}
+```
+
+这不是鼓励"忽略错误"，偶发失败仍然应该被日志记录下来、纳入审片时的重点检查项；但对于一个要跑几分钟的连续录制来说，"单步降级、整体不崩"比"任何异常都中断重来"在工程上更划算。
+
+下一章讲录制之后的字幕来源和配音生成。
