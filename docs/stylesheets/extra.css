@@ -1,54 +1,87 @@
 /*
- * 品牌色取自 AAS 系列演示应用/控制台的统一视觉规范：
- * 主色 #D42820（红），辅助浅红 #E8574C，头部渐变 135deg #E8402F → #B8241D。
- * 圆角、阴影、字体栈同样对齐这套规范，让教程站点和产品演示画面观感一致。
+ * 科技感主题：深色为默认基调，靛蓝 → 青色的渐变品牌色，
+ * 终端风代码块（发光边框 + 深空背景），网格纹理点缀头部。
  */
 
-/* ---------- 品牌色：浅色模式 ---------- */
-[data-md-color-scheme="default"] {
-  --md-primary-fg-color: #d42820;
-  --md-primary-fg-color--light: #e8574c;
-  --md-primary-fg-color--dark: #b8241d;
-  --md-primary-bg-color: #ffffff;
-  --md-primary-bg-color--light: #ffffff;
-
-  --md-accent-fg-color: #d42820;
-  --md-accent-fg-color--transparent: #d4282026;
-  --md-accent-bg-color: #ffffff;
-  --md-accent-bg-color--light: #ffffff;
-
-  --md-typeset-a-color: #d42820;
-
-  --md-default-bg-color: #f5f6f8;
-  --md-code-bg-color: #f7f8fa;
-  --md-code-fg-color: #1a1d29;
-}
-
-/* ---------- 品牌色：深色模式 ---------- */
+/* ---------- 品牌色：暗色（默认） ---------- */
 [data-md-color-scheme="slate"] {
-  --md-primary-fg-color: #e8574c;
-  --md-primary-fg-color--light: #ff7a68;
-  --md-primary-fg-color--dark: #b8241d;
+  --md-default-bg-color: #0b0f19;
+  --md-default-fg-color: #e2e8f0;
+  --md-default-fg-color--light: #cbd5e1;
+  --md-default-fg-color--lighter: #94a3b8;
+  --md-default-fg-color--lightest: #1e2536;
 
-  --md-accent-fg-color: #ff7a68;
-  --md-accent-fg-color--transparent: #ff7a6826;
+  --md-primary-fg-color: #0b0f19;
+  --md-primary-bg-color: #e2e8f0;
 
-  --md-typeset-a-color: #ff7a68;
+  --md-accent-fg-color: #22d3ee;
+  --md-accent-fg-color--transparent: #22d3ee26;
 
-  --md-code-bg-color: #1c1f27;
-  --md-code-fg-color: #e6e8ec;
+  --md-typeset-a-color: #7dd3fc;
+
+  --md-code-bg-color: #10141f;
+  --md-code-fg-color: #d7e2f4;
+
+  --brand-gradient: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
+  --brand-glow: 0 0 0 1px rgba(99, 102, 241, 0.35), 0 0 24px rgba(34, 211, 238, 0.12);
 }
 
-/* 顶部导航条用品牌渐变，呼应控制台头部样式 */
+/* ---------- 品牌色：亮色 ---------- */
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #ffffff;
+  --md-primary-bg-color: #0b0f19;
+
+  --md-accent-fg-color: #4f46e5;
+  --md-accent-fg-color--transparent: #4f46e526;
+
+  --md-typeset-a-color: #4f46e5;
+
+  --md-code-bg-color: #0b0f19;
+  --md-code-fg-color: #d7e2f4;
+
+  --brand-gradient: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+  --brand-glow: 0 0 0 1px rgba(79, 70, 229, 0.18), 0 0 20px rgba(6, 182, 212, 0.10);
+}
+
+/* 顶部导航条：渐变 + 细网格纹理，营造"电路板"科技感 */
 .md-header {
-  background: linear-gradient(135deg, #e8402f, #b8241d);
+  background: var(--brand-gradient);
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1px),
+    var(--brand-gradient);
+  background-size: 18px 18px, 100% 100%;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
-/* ---------- 中文字体优化 ----------
- * 关闭了 Material 默认的 Google Fonts（国内访问不稳定，且拉丁字重和中文字重不搭）。
- * 这里显式声明系统自带的高素质中文字体优先级，Mac 上是 PingFang SC，
- * Windows 上落到 Microsoft YaHei，Linux 落到 Noto Sans CJK，观感统一优雅。
- */
+.md-header__title,
+.md-header__button {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+}
+
+/* 左侧栏当前项：发光左边条 */
+.md-nav__link--active,
+.md-nav__link:focus,
+.md-nav__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.md-nav__item .md-nav__link--active {
+  position: relative;
+}
+
+.md-nav__item .md-nav__link--active::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: var(--brand-gradient);
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.6);
+}
+
+/* ---------- 中文字体 ---------- */
 :root {
   --md-text-font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans SC",
     "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
@@ -68,16 +101,29 @@
   letter-spacing: 0.01em;
 }
 
-/* ---------- 代码块美化 ----------
- * 圆角卡片 + 细边框 + 轻阴影，呼应控制台卡片式设计（--radius: 12px 的风格）。
- */
+.md-typeset h2 {
+  position: relative;
+  padding-left: 14px;
+}
+
+.md-typeset h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.15em;
+  bottom: 0.15em;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--brand-gradient);
+}
+
+/* ---------- 代码块：终端风，发光边框 + 深空背景 ---------- */
 .md-typeset .highlight {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--md-default-fg-color--lightest);
-  box-shadow:
-    0 1px 2px rgba(16, 24, 40, 0.04),
-    0 2px 8px rgba(16, 24, 40, 0.06);
+  background: var(--md-code-bg-color);
+  box-shadow: var(--brand-glow);
+  border: 1px solid rgba(148, 163, 184, 0.15);
 }
 
 .md-typeset .highlight > pre {
@@ -87,6 +133,20 @@
 .md-typeset pre > code {
   font-size: 0.78rem;
   line-height: 1.7;
+  color: var(--md-code-fg-color);
+}
+
+/* 代码块顶部仿终端窗口的三色圆点装饰条 */
+.md-typeset .highlight::before {
+  content: "";
+  display: block;
+  height: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  background-image:
+    radial-gradient(circle 5px at 16px 14px, #ff5f56 100%, transparent 101%),
+    radial-gradient(circle 5px at 34px 14px, #ffbd2e 100%, transparent 101%),
+    radial-gradient(circle 5px at 52px 14px, #27c93f 100%, transparent 101%);
 }
 
 .md-typeset code {
@@ -95,31 +155,48 @@
 }
 
 .md-clipboard {
-  border-radius: 6px;
+  color: var(--md-accent-fg-color);
 }
 
 .md-clipboard:hover {
   color: var(--md-accent-fg-color);
+  filter: brightness(1.3);
 }
 
-/* 行内代码与代码块背景略微区分正文背景，层次更清楚 */
-[data-md-color-scheme="default"] .md-typeset :not(pre) > code {
-  background-color: #eef0f3;
-}
 [data-md-color-scheme="slate"] .md-typeset :not(pre) > code {
-  background-color: #262a34;
+  background-color: #161b29;
+  color: #7dd3fc;
+}
+[data-md-color-scheme="default"] .md-typeset :not(pre) > code {
+  background-color: #eef1ff;
+  color: #4338ca;
 }
 
-/* 提示框/详情框也用一致的圆角语言 */
+/* 提示框/详情框：发光描边，呼应整体科技感 */
 .md-typeset .admonition,
 .md-typeset details {
   border-radius: 12px;
   overflow: hidden;
+  border-left: 3px solid var(--md-accent-fg-color);
 }
 
-/* 表格圆角与细边框，和控制台的卡片表格视觉呼应 */
+/* 表格：细边框 + 圆角卡片 */
 .md-typeset table:not([class]) {
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid var(--md-default-fg-color--lightest);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.md-typeset table:not([class]) th {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+/* 首页/章节内的按钮、链接 hover 发光反馈 */
+.md-typeset a:hover {
+  text-shadow: 0 0 12px var(--md-accent-fg-color);
+}
+
+/* 搜索框：发光聚焦态 */
+.md-search__input:focus {
+  box-shadow: 0 0 0 2px var(--md-accent-fg-color);
 }

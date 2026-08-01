@@ -11,20 +11,18 @@ theme:
   language: zh
   font: false
   palette:
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
-      primary: red
-      accent: red
-      toggle:
-        icon: material/weather-night
-        name: 切换到深色模式
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: red
-      accent: red
+    - scheme: slate
+      primary: black
+      accent: indigo
       toggle:
         icon: material/weather-sunny
         name: 切换到浅色模式
+    - scheme: default
+      primary: white
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: 切换到深色模式
   features:
     - navigation.instant
     - navigation.tracking
