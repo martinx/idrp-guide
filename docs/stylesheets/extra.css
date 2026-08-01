@@ -86,6 +86,7 @@
 .md-typeset {
   font-family: var(--md-text-font);
   line-height: 1.75;
+  font-size: 0.8rem;
 }
 .md-typeset h1,
 .md-typeset h2,
@@ -218,22 +219,37 @@
  * ========================================================== */
 .md-sidebar--primary {
   position: fixed !important;
-  top: 0;
-  height: 100vh;
+  top: 0 !important;
+  left: 0 !important;
+  right: auto !important;
+  height: 100vh !important;
+  width: 300px !important;
+  max-width: 85vw !important;
   transform: translateX(-100%) !important;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 10;
-  background: var(--surface);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  z-index: 20 !important;
+  background: var(--surface) !important;
   border-right: 1px solid var(--border);
+  overflow-y: auto !important;
 }
 [data-md-toggle="drawer"]:checked ~ .md-container .md-sidebar--primary {
   transform: translateX(0) !important;
   box-shadow: var(--shadow-md);
 }
 
+/* 正文不再为左侧栏预留空间，占满剩余宽度 */
+.md-main__inner {
+  margin-left: 0 !important;
+}
+
 /* 顶部「目录」按钮：任何宽度下都显示，不再只在手机宽度出现 */
 .md-header__button[for="__drawer"] {
   display: inline-flex !important;
+}
+
+/* 顶部右侧仓库链接（GitHub图标）：只保留标题和搜索，去掉这个入口 */
+.md-header__source {
+  display: none !important;
 }
 
 /* 搜索框：加宽 + 常驻展开，作为主要的导航入口 */
