@@ -1,4 +1,4 @@
-site_name: 意图驱动录制：从零打造自动化功能演示视频流水线
+site_name: 意图驱动录制：AI 协同的自动化演示流水线
 site_description: 从一台干净的机器开始，搭建一套"描述意图 + 少量 codegen"即可自动生成功能演示视频的完整流水线
 site_url: https://idrp.bitey.ai/
 repo_url: https://github.com/martinx/idrp-guide
